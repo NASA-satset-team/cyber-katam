@@ -1,0 +1,20 @@
+# ---------------------------------------------------------------------------
+# CYBER-KATAM core dependencies
+# ---------------------------------------------------------------------------
+# Tested on: Windows 11, Python 3.12.10, pip 25.x
+# Install:   python -m pip install -r requirements.txt
+#
+# These are the minimum packages needed for contracts, H3 processing,
+# tabular/parquet handling, Excel I/O, and tests.
+# Geospatial/NASA acquisition extras are in requirements-optional.txt.
+# Do NOT add heavy optional packages here: CI and all five members
+# should be able to install this core set quickly.
+# ---------------------------------------------------------------------------
+
+numpy==2.1.3
+pandas==2.2.3
+openpyxl==3.1.5
+pyarrow==17.0.0
+h3==4.1.2
+jsonschema==4.23.0
+pytest==8.3.4

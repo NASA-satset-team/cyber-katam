@@ -1,0 +1,10 @@
+{
+  "description": "A project setup assistant that prepares imported apps for deployment and preview, verifies readiness, and flags critical issues before changes.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

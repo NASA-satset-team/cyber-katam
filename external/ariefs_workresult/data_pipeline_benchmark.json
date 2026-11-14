@@ -1,0 +1,15 @@
+{
+    "metadata": {
+        "test_type": "Stress Test & Benchmark",
+        "target_area": "1 Kabupaten (Simulasi Banyumas)",
+        "target_time_seconds": 300,
+        "status": "PASS"
+    },
+    "execution_times_seconds": {
+        "step_1_load_vector": 0.6086,
+        "step_2_h3_indexing": 2.6537,
+        "step_3_satellite_extraction": 3.8881,
+        "step_4_data_saving": 0.528,
+        "total_execution_time": 7.6784
+    }
+}

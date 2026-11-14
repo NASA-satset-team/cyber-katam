@@ -1,0 +1,14 @@
+{
+    "metadata": {
+        "model": "Bradyrhizobium N-Fixation Model",
+        "region": "Banyumas",
+        "description": "Neraca ketersediaan N untuk rotasi tanam pasca-kedelai"
+    },
+    "parameters": {
+        "soybean_yield_ton_ha": 2.5,
+        "biomass_residue_ton_ha": 3.75,
+        "total_n_in_residue_kg_ha": 93.75,
+        "n_fixed_by_bradyrhizobium_kg_ha": 75.0,
+        "n_available_next_season_kg_ha": 30.0
+    }
+}

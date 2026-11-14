@@ -224,3 +224,21 @@ No source file from Arya or Arief was deleted or modified.
 
 Integration sequencing and module-level blockers are in
 `docs/ai_core_readiness.md`.
+## 10. Interactive frontend additions (v0.2)
+
+The audit above remains unchanged as the incoming-artifact record. The current
+frontend is documented in `docs/mvp.md`:
+
+| Path | Purpose | Provenance / limits |
+|---|---|---|
+| `web-app/src/main.jsx` | Analyst, Farmer/PPL, XAI certificate and local gates | Indonesian UI; session-only simulation |
+| `web-app/src/FieldMap.jsx` | Interactive schematic H3 map | Not geographically registered satellite imagery or verified parcels |
+| `web-app/src/model.js` | Deterministic illustrative UI state | No physical engine or real NASA values |
+| `web-app/src/share.js` | Canvas PNG export | Actual client-side file under 150,000 bytes; WhatsApp sharing simulated |
+| `public/demo-grid.geojson` | Sanitized source geometry | Original synthetic H3 indexes; no random satellite attributes |
+| `public/demo-grid-levels.json` | Valid H3-7–9 display cells | Derived parents; no observed environmental data |
+| `web-app/scripts/build_demo_geometry.py` | Reproducible geometry derivation | Uses existing pinned h3 library |
+| `public/indonesia-fields.jpg` | Illustrative photo | Iswanto Arif / Unsplash; not NASA or field evidence |
+| `web-app/src/model.test.js`, `web-app/e2e/app.spec.js`, `tests/test_demo_geometry.py` | Model, UI, export, and geometry checks | Offline fixtures; no real-data acceptance claim |
+
+No file under `external/` or ratified shared interface was modified.

@@ -1,0 +1,5 @@
+# Auto-generated during Figma Make bootstrap because this project shipped no mise config.
+[tools]
+python = "3.12"
+node = "22"
+pnpm = "10.11.0"

@@ -56,7 +56,6 @@ data/processed/*
 
 # Generated synthetic H3 fixture (reproducible with src.engines.synthetic_h3_generator)
 data/mock/banyumas_h3_synthetic.geojson
-
 # Common large geospatial/raster outputs anywhere in the repo
 *.tif
 *.tiff
@@ -96,6 +95,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+test-results/
+playwright-report/
 
 # Editors and OS files
 .vscode/

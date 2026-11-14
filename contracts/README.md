@@ -34,7 +34,6 @@ The schema fails closed on unknown fields. Semantic rules (H3 validity, H3 paren
 consistency, unique scenario ids) are opt-in because they are not ratified.
 Arya's sample `h3_index` (`892e42426ffffff`) is not a valid H3 cell under
 `h3 4.1.2`; the sample must not be used as a golden validator fixture.
-
 ## Rules
 
 1. Field names, types, units, required flags, and enum values are shared API.

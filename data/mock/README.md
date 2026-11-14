@@ -25,7 +25,6 @@ The synthetic climatology baseline is:
 When you need a canonical mock dataset for tests, copy these files into a
 timestamped fixture folder and record the provenance in the test docstring.
 Never rename them to sound like observations.
-
 ## Generated synthetic H3 fixture (Task 2)
 
 The AI Core synthetic generator writes a separate, explicitly labelled fixture:

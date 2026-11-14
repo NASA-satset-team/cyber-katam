@@ -82,17 +82,30 @@ export default function FieldMap({
     googleHybrid.addTo(map);
 
     // Tambahkan kontrol basemap di pojok kanan atas
-    L.control
-      .layers(
-        {
-          'Google Satelit': googleHybrid,
-          'Google Roads': googleRoads,
-          OpenStreetMap: osm,
-        },
-        null,
-        { position: 'topright' }
-      )
-      .addTo(map);
+    const baseLayers = {
+      'Google Satelit': googleHybrid,
+      'Google Roads': googleRoads,
+      OpenStreetMap: osm,
+    };
+    const layerControl = L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+
+    // Load layer petak sawah riil Copernicus Sentinel-2
+    fetch('/banyumas_paddy_mask.geojson')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((geo) => {
+        if (!geo || !mapInstanceRef.current) return;
+        const paddyLayer = L.geoJSON(geo, {
+          style: {
+            color: '#10b981',
+            weight: 1.2,
+            fillColor: '#059669',
+            fillOpacity: 0.22,
+          },
+        });
+        paddyLayer.addTo(map);
+        layerControl.addOverlay(paddyLayer, '🌾 Sawah Riil (Sentinel-2)');
+      })
+      .catch(() => {});
 
     mapInstanceRef.current = map;
 
@@ -150,12 +163,13 @@ export default function FieldMap({
       style: (feature) => {
         const condition = cellCondition(feature.properties, activeLayers, result);
         const isSelected = selectedCell?.id === feature.id;
+        const isPaddy = feature.properties?.indicators?.paddy_gate_passed !== false;
         return {
-          fillColor: colors[condition],
-          fillOpacity: isSelected ? 0.75 : 0.28,
-          color: isSelected ? '#ffffff' : colors[condition],
+          fillColor: isPaddy ? colors[condition] : '#64748b',
+          fillOpacity: isSelected ? 0.75 : isPaddy ? 0.32 : 0.08,
+          color: isSelected ? '#ffffff' : isPaddy ? colors[condition] : '#94a3b8',
           weight: isSelected ? 2.5 : resolution === 9 ? 0.8 : 1.4,
-          dashArray: isSelected ? '' : '2',
+          dashArray: isSelected ? '' : isPaddy ? '2' : '4',
         };
       },
       onEachFeature: (feature, l) => {
@@ -180,10 +194,11 @@ export default function FieldMap({
             setHover(null);
             const isSelected = selectedCell?.id === feature.id;
             const condition = cellCondition(feature.properties, activeLayers, result);
+            const isPaddy = feature.properties?.indicators?.paddy_gate_passed !== false;
             e.target.setStyle({
-              fillColor: colors[condition],
-              fillOpacity: isSelected ? 0.75 : 0.28,
-              color: isSelected ? '#ffffff' : colors[condition],
+              fillColor: isPaddy ? colors[condition] : '#64748b',
+              fillOpacity: isSelected ? 0.75 : isPaddy ? 0.32 : 0.08,
+              color: isSelected ? '#ffffff' : isPaddy ? colors[condition] : '#94a3b8',
               weight: isSelected ? 2.5 : resolution === 9 ? 0.8 : 1.4,
             });
           },
@@ -295,7 +310,15 @@ export default function FieldMap({
             <dl>
               <div>
                 <dt>Status Lahan</dt>
-                <dd>{selectedCell.indicators.paddy_gate_passed ? '✅ Terverifikasi Sawah' : '⚠ Belum Terverifikasi'}</dd>
+                <dd className={selectedCell.indicators.paddy_gate_passed ? '' : 'orange-text'}>
+                  {selectedCell.indicators.paddy_fraction != null
+                    ? selectedCell.indicators.paddy_gate_passed
+                      ? `✅ Terverifikasi Sawah (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
+                      : '🏙️ Non-Sawah / Pemukiman (Sentinel-2)'
+                    : selectedCell.indicators.paddy_gate_passed
+                    ? '✅ Terverifikasi Sawah'
+                    : '⚠ Belum Terverifikasi'}
+                </dd>
               </div>
               <div>
                 <dt>Skor PVRS (Stres Akar)</dt>

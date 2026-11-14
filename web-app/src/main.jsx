@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
-  Bell,
   BookOpen,
   Check,
   ChevronDown,
@@ -24,8 +23,7 @@ import {
   Leaf,
   LockKeyhole,
   MapPin,
-  PanelRightClose,
-  PanelRightOpen,
+  Moon,
   Play,
   Satellite,
   Search,
@@ -40,24 +38,27 @@ import {
   X,
 } from 'lucide-react';
 import {
-  decisionState,
-  gateDefinitions,
-  layers,
-  missingEvidence,
   number,
   simulate,
-  strategies,
   updateGate,
 } from './model';
+import {
+  getDecisionState,
+  getGateDefinitions,
+  getLayers,
+  getMissingEvidence,
+  getSimulationSummary,
+  getStrategies,
+  periodOptionsByLang,
+} from './i18n';
 import { createInfographic } from './share';
 import './styles.css';
 
 const LazyMap = React.lazy(() => import('./FieldMap'));
-const periodOptions = ['1–10 November 2026', '11–20 November 2026', '21–30 November 2026'];
 const initialGates = ['belum', 'belum', 'belum', 'belum'];
 const layerIcons = [Droplets, Sun, Leaf, CloudRain, Globe2];
 
-function Modal({ title, onClose, children, className = '' }) {
+function Modal({ title, onClose, closeLabel = 'Tutup dialog', children, className = '' }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -84,7 +85,7 @@ function Modal({ title, onClose, children, className = '' }) {
     >
       <div className="modal-top">
         <h2 id="modal-title">{title}</h2>
-        <button className="icon-button" aria-label="Tutup dialog" onClick={onClose}>
+        <button className="icon-button" aria-label={closeLabel} onClick={onClose}>
           <X size={20} />
         </button>
       </div>
@@ -93,11 +94,12 @@ function Modal({ title, onClose, children, className = '' }) {
   );
 }
 
-function DemoBadge({ children = 'Data Simulasi', subtle = false }) {
+function DemoBadge({ children, subtle = false, lang = 'id' }) {
+  const defaultLabel = lang === 'en' ? 'Simulation Data' : 'Data Simulasi';
   return (
     <span className={`demo-badge ${subtle ? 'subtle' : ''}`}>
       <FlaskConical size={11} />
-      {children}
+      {children || defaultLabel}
     </span>
   );
 }
@@ -105,7 +107,9 @@ function DemoBadge({ children = 'Data Simulasi', subtle = false }) {
 function App() {
   const [mode, setMode] = useState(() => (window.matchMedia('(max-width: 700px)').matches ? 'farmer' : 'analyst'));
   const [view, setView] = useState('dashboard');
-  const [period, setPeriod] = useState(periodOptions[0]);
+  const [lang, setLang] = useState('id');
+  const [theme, setTheme] = useState('light');
+  const [period, setPeriod] = useState(periodOptionsByLang.id[0]);
   const [activeLayers, setActiveLayers] = useState(['smap', 'eco', 'hls', 'gpm']);
   const [resolution, setResolution] = useState(8);
   const [showGrid, setShowGrid] = useState(true);
@@ -115,7 +119,7 @@ function App() {
   const [temperature, setTemperature] = useState(0);
   const [result, setResult] = useState(() => simulate());
   const [hasRun, setHasRun] = useState(false);
-  const [diagnostics, setDiagnostics] = useState(true);
+  const [diagnostics] = useState(true);
   const [layersOpen, setLayersOpen] = useState(true);
   const [gates, setGates] = useState(initialGates);
   const [activeGate, setActiveGate] = useState(0);
@@ -130,15 +134,28 @@ function App() {
   const [toast, setToast] = useState('');
   const [term, setTerm] = useState(null);
 
+  const en = lang === 'en';
+  const periodOptions = periodOptionsByLang[lang];
+  const strategies = getStrategies(lang);
+  const layers = getLayers(lang);
+  const gateDefinitions = getGateDefinitions(lang);
+  const missingEvidence = getMissingEvidence(lang);
+
   const shareRef = useRef(null);
   const strategy = strategies.find((item) => item.id === selectedStrategy);
-  const decision = decisionState(gates);
+  const decision = getDecisionState(gates, lang);
   const analystDashboard = mode === 'analyst' && view === 'dashboard';
   const dirty = result.rain !== rain || result.temperature !== temperature;
+  const localizedSummary = getSimulationSummary(result.rain, result.temperature, lang, result.summary);
 
   useEffect(() => {
-    document.documentElement.lang = 'id';
-  }, []);
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  useEffect(() => {
+    document.body.classList.toggle('dark-theme', theme === 'dark');
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!toast) return;
@@ -173,7 +190,11 @@ function App() {
     setSignature('');
     setAcknowledged(false);
     setActiveGate(0);
-    setToast('Simulasi diperbarui. Ini respons demo, bukan model iklim atau prakiraan nyata.');
+    setToast(
+      en
+        ? 'Simulation updated. This is a demo response, not a real climate model or forecast.'
+        : 'Simulasi diperbarui. Ini respons demo, bukan model iklim atau prakiraan nyata.'
+    );
   }
 
   function changePeriod(next) {
@@ -182,7 +203,11 @@ function App() {
     setSignedBy('');
     setSignature('');
     setActiveGate(0);
-    setToast('Periode contoh diubah. Tidak ada observasi nyata yang diambil.');
+    setToast(
+      en
+        ? 'Sample period updated. No real observations were fetched.'
+        : 'Periode contoh diubah. Tidak ada observasi nyata yang diambil.'
+    );
   }
 
   function selectStrategy(id) {
@@ -200,7 +225,11 @@ function App() {
     if (status === 'lulus' && activeGate < 3) setActiveGate(activeGate + 1);
     setToast(
       status === 'gagal'
-        ? 'Gerbang ditandai gagal dalam simulasi. Sistem tetap abstain.'
+        ? en
+          ? 'Gate marked as failed in simulation. System remains in abstention.'
+          : 'Gerbang ditandai gagal dalam simulasi. Sistem tetap abstain.'
+        : en
+        ? 'Demo verification recorded for this session. Not a field validation.'
         : 'Verifikasi demo dicatat untuk sesi ini. Bukan validasi lapangan.'
     );
   }
@@ -226,21 +255,25 @@ function App() {
     anchor.href = share.url;
     anchor.download = 'CYBER-KATAM-ringkasan-simulasi.png';
     anchor.click();
-    setShareFeedback('Gambar PNG diunduh. Bagikan sebagai bahan diskusi, bukan anjuran tanam.');
+    setShareFeedback(
+      en
+        ? 'PNG image downloaded. Share as discussion material, not an official planting advisory.'
+        : 'Gambar PNG diunduh. Bagikan sebagai bahan diskusi, bukan anjuran tanam.'
+    );
   }
 
   const commonAuditButton = (
     <button className="button primary" onClick={openAudit}>
       <FileCheck2 size={16} />
-      Lihat Penjelasan Keputusan
+      {en ? 'View Decision Explanation' : 'Lihat Penjelasan Keputusan'}
       <ArrowUpRight size={15} />
     </button>
   );
 
   return (
-    <div className={`platform light-theme ${view === 'audit' ? 'audit-theme' : ''}`}>
+    <div className={`platform ${theme === 'dark' ? 'dark-theme' : 'light-theme'} ${view === 'audit' ? 'audit-theme' : ''}`}>
       <a className="skip-link" href="#content">
-        Lewati ke konten utama
+        {en ? 'Skip to main content' : 'Lewati ke konten utama'}
       </a>
 
       {/* HEADER UTAMA */}
@@ -255,12 +288,12 @@ function App() {
           <MapPin size={15} />
           <span>
             Banyumas
-            <small>Jawa Tengah, Indonesia</small>
+            <small>{en ? 'Central Java, Indonesia' : 'Jawa Tengah, Indonesia'}</small>
           </span>
         </span>
 
         <div className="header-end">
-          <div className="mode-switch" aria-label="Pilih mode pengguna">
+          <div className="mode-switch" aria-label={en ? 'Select user mode' : 'Pilih mode pengguna'}>
             <button
               className={mode === 'analyst' ? 'active' : ''}
               aria-pressed={mode === 'analyst'}
@@ -268,7 +301,7 @@ function App() {
             >
               <Activity size={14} />
               <span>
-                <span className="long-label">Pembuat Kebijakan</span>
+                <span className="long-label">{en ? 'Policymaker' : 'Pembuat Kebijakan'}</span>
               </span>
             </button>
             <button
@@ -277,40 +310,75 @@ function App() {
               onClick={() => changeMode('farmer')}
             >
               <Sprout size={14} />
-              <span className="long-label">Petani</span>
+              <span className="long-label">{en ? 'Farmer' : 'Petani'}</span>
             </button>
           </div>
 
-          <button className="notification-button" aria-label="Lihat pemberitahuan" onClick={() => setModal('notification')}>
-            <Bell size={18} />
-            <i />
-          </button>
+          <div className="header-Divider-small" />
 
-          <button className="avatar" aria-label="Informasi profil demo" onClick={() => setModal('profile')}>
-            AP
+          {/* Toggle Bahasa ID / EN */}
+          <div className="lang-switch" role="group" aria-label={en ? 'Select language' : 'Pilih bahasa'}>
+            <button
+              className={lang === 'id' ? 'active' : ''}
+              aria-pressed={lang === 'id'}
+              onClick={() => setLang('id')}
+              title="Bahasa Indonesia"
+            >
+              ID
+            </button>
+            <button
+              className={lang === 'en' ? 'active' : ''}
+              aria-pressed={lang === 'en'}
+              onClick={() => setLang('en')}
+              title="English"
+            >
+              EN
+            </button>
+          </div>
+
+          {/* Toggle Tema Light / Dark */}
+          <button
+            className="theme-toggle"
+            aria-label={
+              theme === 'dark'
+                ? en
+                  ? 'Switch to Light Mode'
+                  : 'Ganti ke Mode Terang'
+                : en
+                ? 'Switch to Dark Mode'
+                : 'Ganti ke Mode Gelap'
+            }
+            title={
+              theme === 'dark'
+                ? en
+                  ? 'Light Mode'
+                  : 'Mode Terang'
+                : en
+                ? 'Dark Mode'
+                : 'Mode Gelap'
+            }
+            onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </button>
         </div>
       </header>
 
       {/* SIDEBAR ANALIS */}
       {analystDashboard && (
-        <nav className="analyst-rail" aria-label="Navigasi analis">
-          <button className="active" aria-label="Dasbor geospasial" onClick={() => setView('dashboard')}>
+        <nav className="analyst-rail" aria-label={en ? 'Analyst navigation' : 'Navigasi analis'}>
+          <button className="active" aria-label={en ? 'Geospatial dashboard' : 'Dasbor geospasial'} onClick={() => setView('dashboard')}>
             <LayoutDashboard size={20} />
-            <span>Dasbor</span>
+            <span>{en ? 'Dashboard' : 'Dasbor'}</span>
           </button>
-          <button aria-label="Buka metadata sumber" onClick={() => setModal('sources')}>
+          <button aria-label={en ? 'Open source metadata' : 'Buka metadata sumber'} onClick={() => setModal('sources')}>
             <Satellite size={21} />
-            <span>Satelit</span>
-          </button>
-          <button aria-label="Buka audit rekomendasi" onClick={openAudit}>
-            <ClipboardCheck size={21} />
-            <span>Audit</span>
+            <span>{en ? 'Satellite' : 'Satelit'}</span>
           </button>
           <div className="rail-bottom">
-            <button aria-label="Panduan platform" onClick={() => setModal('help')}>
+            <button aria-label={en ? 'Platform guide' : 'Panduan platform'} onClick={() => setModal('help')}>
               <CircleHelp size={21} />
-              <span>Panduan</span>
+              <span>{en ? 'Guide' : 'Panduan'}</span>
             </button>
             <span className="rail-version">v0.2</span>
           </div>
@@ -324,14 +392,14 @@ function App() {
           <>
             <div className="analyst-heading">
               <div>
-                <h1>Memahami lahan, Merencanakan Ketahanan</h1>
+                <h1>{en ? 'Understanding Land, Planning Resilience' : 'Memahami lahan, Merencanakan Ketahanan'}</h1>
               </div>
               <div className="analysis-period">
-                <label htmlFor="period">PERIODE ANALISIS CONTOH</label>
+                <label htmlFor="period">{en ? 'SAMPLE ANALYSIS PERIOD' : 'PERIODE ANALISIS CONTOH'}</label>
                 <div>
                   <select
                     id="period"
-                    aria-label="Periode analisis"
+                    aria-label={en ? 'Analysis period' : 'Periode analisis'}
                     value={period}
                     onChange={(e) => changePeriod(e.target.value)}
                   >
@@ -351,12 +419,12 @@ function App() {
                   <div className="map-card-heading">
                     <h2>
                       <Globe2 size={16} />
-                      Peta Intelijen Lahan
+                      {en ? 'Land Intelligence Map' : 'Peta Intelijen Lahan'}
                     </h2>
                   </div>
 
                   <div className="map-stage">
-                    <React.Suspense fallback={<div className="map-fallback">Memuat peta skematik…</div>}>
+                    <React.Suspense fallback={<div className="map-fallback">{en ? 'Loading schematic map…' : 'Memuat peta skematik…'}</div>}>
                       <LazyMap
                         activeLayers={activeLayers}
                         result={result}
@@ -366,6 +434,7 @@ function App() {
                         showGrid={showGrid}
                         setShowGrid={setShowGrid}
                         onCell={setSelectedCell}
+                        lang={lang}
                       />
                     </React.Suspense>
                   </div>
@@ -380,7 +449,7 @@ function App() {
                           aria-expanded={layersOpen}
                         >
                           <Satellite size={17} />
-                          <span>Lapisan Data Satelit NASA</span>
+                          <span>{en ? 'NASA Satellite Data Layers' : 'Lapisan Data Satelit NASA'}</span>
                           <ChevronDown
                             size={16}
                             style={{
@@ -390,13 +459,15 @@ function App() {
                           />
                         </button>
                         {layersOpen && (
-                          <p className="satellite-subtitle">Pilih konteks visual untuk eksplorasi.</p>
+                          <p className="satellite-subtitle">
+                            {en ? 'Select visual context for exploration.' : 'Pilih konteks visual untuk eksplorasi.'}
+                          </p>
                         )}
                       </div>
                       {layersOpen && (
                         <div className="layer-foot">
                           <Info size={13} />
-                          <span>Tampilan simulasi. Tidak mengambil data NASA.</span>
+                          <span>{en ? 'Simulation view. Does not fetch live NASA data.' : 'Tampilan simulasi. Tidak mengambil data NASA.'}</span>
                         </div>
                       )}
                     </div>
@@ -412,7 +483,7 @@ function App() {
                               className={`layer-row ${isEnabled ? 'enabled' : ''}`}
                               role="switch"
                               aria-checked={isEnabled}
-                              aria-label={`Lapisan ${layer.name}`}
+                              aria-label={`${en ? 'Layer' : 'Lapisan'} ${layer.name}`}
                               onClick={() =>
                                 setActiveLayers((current) =>
                                   current.includes(layer.id)
@@ -430,7 +501,9 @@ function App() {
                                   <small>{layer.resolution}</small>
                                 </strong>
                                 <span>{layer.title}</span>
-                                <small>{layer.source} · {layer.id === 'srtm' ? 'Belum tersedia' : 'Ilustratif'}</small>
+                                <small>
+                                  {layer.source} · {layer.id === 'srtm' ? (en ? 'Not available' : 'Belum tersedia') : (en ? 'Illustrative' : 'Ilustratif')}
+                                </small>
                               </span>
                               <span className="toggle-track">
                                 <i />
@@ -455,13 +528,13 @@ function App() {
                   <div className="climate-title">
                     <div>
                       <SlidersHorizontal size={17} />
-                      <h2>Simulasi Skenario Iklim</h2>
+                      <h2>{en ? 'Climate Scenario Simulation' : 'Simulasi Skenario Iklim'}</h2>
                     </div>
                   </div>
 
                   <div className="climate-controls">
                     <Slider
-                      label="Anomali curah hujan"
+                      label={en ? 'Rainfall anomaly' : 'Anomali curah hujan'}
                       unit="%"
                       value={rain}
                       setValue={setRain}
@@ -471,7 +544,7 @@ function App() {
                       icon={CloudRain}
                     />
                     <Slider
-                      label="Kenaikan suhu"
+                      label={en ? 'Temperature rise' : 'Kenaikan suhu'}
                       unit="°C"
                       value={temperature}
                       setValue={setTemperature}
@@ -482,16 +555,26 @@ function App() {
                     />
                     <button className="button primary run-button" onClick={runSimulation}>
                       <Play size={15} fill="currentColor" />
-                      Jalankan Simulasi
+                      {en ? 'Run Simulation' : 'Jalankan Simulasi'}
                     </button>
                   </div>
 
                   <div className="simulation-summary" aria-live="polite">
                     <span className="summary-status">
                       <i />
-                      {dirty ? 'Perubahan belum dijalankan' : hasRun ? 'Simulasi diperbarui' : 'Skenario dasar aktif'}
+                      {dirty
+                        ? en
+                          ? 'Changes not yet run'
+                          : 'Perubahan belum dijalankan'
+                        : hasRun
+                        ? en
+                          ? 'Simulation updated'
+                          : 'Simulasi diperbarui'
+                        : en
+                        ? 'Baseline scenario active'
+                        : 'Skenario dasar aktif'}
                     </span>
-                    <p>{result.summary}</p>
+                    <p>{localizedSummary}</p>
                   </div>
                 </section>
               </section>
@@ -500,7 +583,7 @@ function App() {
               {diagnostics && (
                 <aside className="diagnostic-sidebar">
                   <div className="diagnostic-heading">
-                    <h2>Diagnostik Biofisika & Fiskal</h2>
+                    <h2>{en ? 'Biophysical & Fiscal Diagnostics' : 'Diagnostik Biofisika & Fiskal'}</h2>
                     <Info size={15} />
                   </div>
 
@@ -508,27 +591,44 @@ function App() {
                     <div className="diagnostic-kpis">
                       <RiskMetric
                         name="PVRS"
-                        explanation="Risiko stres akar (PVRSEngine)"
+                        explanation={en ? 'Root stress risk (PVRSEngine)' : 'Risiko stres akar (PVRSEngine)'}
                         value={selectedCell?.indicators?.pvrs ?? result.pvrs}
                         color="red"
-                        sourceNote={selectedCell?.indicators?.pvrs != null ? 'PVRSEngine Riil' : 'Data Simulasi'}
+                        sourceNote={
+                          selectedCell?.indicators?.pvrs != null
+                            ? en
+                              ? 'Real PVRSEngine'
+                              : 'PVRSEngine Riil'
+                            : en
+                            ? 'Simulation Data'
+                            : 'Data Simulasi'
+                        }
+                        lang={lang}
                       />
                       <RiskMetric
                         name="BF-EHSI"
-                        explanation="Risiko erosi lahan bera"
+                        explanation={en ? 'Fallow land erosion risk' : 'Risiko erosi lahan bera'}
                         value={result.erosion}
                         color="orange"
-                        sourceNote="Data Simulasi"
+                        sourceNote={en ? 'Simulation Data' : 'Data Simulasi'}
+                        lang={lang}
                       />
                     </div>
 
                     <div className="water-ledger">
-                      <span><Droplets size={15} />Neraca air ilustratif</span>
-                      <strong>{result.water > 0 ? '+' : ''}{result.water}<small> mm</small></strong>
+                      <span>
+                        <Droplets size={15} />
+                        {en ? 'Illustrative water balance' : 'Neraca air ilustratif'}
+                      </span>
+                      <strong>
+                        {result.water > 0 ? '+' : ''}
+                        {result.water}
+                        <small> mm</small>
+                      </strong>
                     </div>
 
                     <div className="diagnostic-section-title">
-                      <span>STRATEGI ROTASI TANAMAN</span>
+                      <span>{en ? 'CROP ROTATION STRATEGIES' : 'STRATEGI ROTASI TANAMAN'}</span>
                     </div>
 
                     <div className="compact-scenarios">
@@ -548,12 +648,12 @@ function App() {
                               {item.id === 'B' ? (
                                 <>
                                   <span className="status-dot" />
-                                  Unggulan dalam demo
+                                  {en ? 'Featured in demo' : 'Unggulan dalam demo'}
                                 </>
                               ) : item.id === 'A' ? (
-                                'Pola eksisting · pembanding'
+                                en ? 'Existing pattern · baseline' : 'Pola eksisting · pembanding'
                               ) : (
-                                'Alternatif diversifikasi'
+                                en ? 'Diversification alternative' : 'Alternatif diversifikasi'
                               )}
                             </small>
                           </span>
@@ -564,37 +664,39 @@ function App() {
                       ))}
                     </div>
 
-                    <Pareto selected={selectedStrategy} onSelect={selectStrategy} />
+                    <Pareto selected={selectedStrategy} onSelect={selectStrategy} strategies={strategies} lang={lang} />
 
                     <div className="fiscal-card">
                       <div>
                         <span className="fiscal-icon">
                           <Leaf size={17} />
                         </span>
-                        <span>POTENSI PENGHEMATAN SUBSIDI UREA</span>
+                        <span>{en ? 'POTENTIAL UREA SUBSIDY SAVINGS' : 'POTENSI PENGHEMATAN SUBSIDI UREA'}</span>
                       </div>
                       <h3>
-                        Rp16,58 <span>Miliar</span>
+                        Rp16,58 <span>{en ? 'Billion' : 'Miliar'}</span>
                       </h3>
-                      <p>per kluster H3-7 · ilustrasi anggaran konsep</p>
+                      <p>{en ? 'per H3-7 cluster · conceptual budget illustration' : 'per kluster H3-7 · ilustrasi anggaran konsep'}</p>
                       <div>
                         <span>
                           <ShieldCheck size={13} />
-                          Penurunan risiko AUTP
+                          {en ? 'AUTP risk reduction' : 'Penurunan risiko AUTP'}
                         </span>
                         <strong>
-                          {number(result.insurance, 1)}%<small> ilustratif</small>
+                          {number(result.insurance, 1)}%<small> {en ? 'illustrative' : 'ilustratif'}</small>
                         </strong>
                       </div>
                       <small className="fiscal-caveat">
-                        Bukan hasil fiskal terverifikasi. Luas kluster dan manfaat aktual belum ditetapkan.
+                        {en
+                          ? 'Not verified fiscal output. Cluster area and actual benefits are not yet established.'
+                          : 'Bukan hasil fiskal terverifikasi. Luas kluster dan manfaat aktual belum ditetapkan.'}
                       </small>
                     </div>
 
                     <div className="diagnostic-cta">
                       <div>
                         <LockKeyhole size={13} />
-                        Menunggu verifikasi lapangan
+                        {en ? 'Awaiting field verification' : 'Menunggu verifikasi lapangan'}
                       </div>
                       {commonAuditButton}
                     </div>
@@ -605,7 +707,7 @@ function App() {
 
             <div className="analyst-bottom">
               <button onClick={() => setModal('help')}>
-                Tentang prototipe
+                {en ? 'About prototype' : 'Tentang prototipe'}
                 <ArrowUpRight size={12} />
               </button>
             </div>
@@ -618,16 +720,21 @@ function App() {
             <div className="farmer-greeting">
               <div>
                 <h1>
-                  Selamat pagi, Pak/Bu!
+                  {en ? 'Good morning, Farmer!' : 'Selamat pagi, Pak/Bu!'}
                   <Sprout size={32} />
                 </h1>
-                <p>Mari kenali kondisi lahan dan pertimbangkan pilihan tanam bersama.</p>
+                <p>
+                  {en
+                    ? 'Let’s understand your land conditions and explore planting options together.'
+                    : 'Mari kenali kondisi lahan dan pertimbangkan pilihan tanam bersama.'}
+                </p>
               </div>
 
               <button className="farmer-period" onClick={() => setModal('period')}>
                 <Sun size={20} />
                 <span>
-                  Periode contoh<strong>{period}</strong>
+                  {en ? 'Sample period' : 'Periode contoh'}
+                  <strong>{period}</strong>
                 </span>
                 <ChevronDown size={14} />
               </button>
@@ -636,10 +743,13 @@ function App() {
             <div className="farmer-demo-notice">
               <FlaskConical size={17} />
               <p>
-                <strong>Anda berada di ruang simulasi.</strong> Informasi berikut adalah contoh, bukan hasil pengukuran lahan Anda.
+                <strong>{en ? 'You are in the simulation room.' : 'Anda berada di ruang simulasi.'}</strong>{' '}
+                {en
+                  ? 'The following information is an example, not a measurement of your actual land.'
+                  : 'Informasi berikut adalah contoh, bukan hasil pengukuran lahan Anda.'}
               </p>
               <button onClick={() => setModal('help')}>
-                Pelajari
+                {en ? 'Learn more' : 'Pelajari'}
                 <ArrowUpRight size={14} />
               </button>
             </div>
@@ -650,24 +760,38 @@ function App() {
                 <Droplets size={32} />
               </div>
               <div className="warning-copy">
-                <h2>Akar Mulai Kehausan</h2>
+                <h2>{en ? 'Roots Starting to Thirst' : 'Akar Mulai Kehausan'}</h2>
                 <p>
                   <button
                     className="term-link"
                     aria-expanded={term === 'water'}
                     onClick={() => setTerm(term === 'water' ? null : 'water')}
                   >
-                    Cadangan air tanah
+                    {en ? 'Soil water reserve' : 'Cadangan air tanah'}
                     <Info size={12} />
                   </button>{' '}
-                  dalam contoh diperkirakan tinggal <strong>{result.moisture}%</strong>. Pertimbangkan pilihan tanam yang lebih hemat air bersama PPL.
+                  {en ? (
+                    <>
+                      in this example is estimated at <strong>{result.moisture}%</strong>. Consider more water-efficient planting options with your extension officer (PPL).
+                    </>
+                  ) : (
+                    <>
+                      dalam contoh diperkirakan tinggal <strong>{result.moisture}%</strong>. Pertimbangkan pilihan tanam yang lebih hemat air bersama PPL.
+                    </>
+                  )}
                 </p>
                 {term === 'water' && (
                   <div className="term-popover" role="tooltip">
-                    Cadangan air tanah adalah air yang masih tersimpan di tanah dan dapat dimanfaatkan akar tanaman.
+                    {en
+                      ? 'Soil water reserve is the moisture still stored in the soil that plant roots can absorb.'
+                      : 'Cadangan air tanah adalah air yang masih tersimpan di tanah dan dapat dimanfaatkan akar tanaman.'}
                   </div>
                 )}
-                <small>Langkah awal: cek air irigasi dan drainase sebelum mengubah pola tanam.</small>
+                <small>
+                  {en
+                    ? 'First step: check irrigation water and drainage before changing cropping patterns.'
+                    : 'Langkah awal: cek air irigasi dan drainase sebelum mengubah pola tanam.'}
+                </small>
               </div>
 
               <div className="water-gauge">
@@ -690,7 +814,7 @@ function App() {
                     {result.moisture}
                     <small>%</small>
                   </strong>
-                  <span>air ilustratif</span>
+                  <span>{en ? 'illustrative water' : 'air ilustratif'}</span>
                 </div>
               </div>
             </section>
@@ -699,11 +823,15 @@ function App() {
             <section className="farmer-rotations">
               <div className="farmer-section-heading">
                 <div>
-                  <div className="eyebrow">PILIHAN YANG BISA DIDISKUSIKAN</div>
-                  <h2>Yuk, Bandingkan Pilihan Tanam!</h2>
-                  <p>Kenali manfaat dan pertimbangannya. Tidak ada satu pola yang cocok untuk semua lahan.</p>
+                  <div className="eyebrow">{en ? 'OPTIONS FOR DISCUSSION' : 'PILIHAN YANG BISA DIDISKUSIKAN'}</div>
+                  <h2>{en ? 'Compare Planting Options!' : 'Yuk, Bandingkan Pilihan Tanam!'}</h2>
+                  <p>
+                    {en
+                      ? 'Understand the benefits and trade-offs. No single pattern fits every field.'
+                      : 'Kenali manfaat dan pertimbangannya. Tidak ada satu pola yang cocok untuk semua lahan.'}
+                  </p>
                 </div>
-                <DemoBadge />
+                <DemoBadge lang={lang} />
               </div>
 
               <div className="farmer-scenarios">
@@ -755,30 +883,59 @@ function App() {
                       onClick={() => selectStrategy(item.id)}
                     >
                       {selectedStrategy === item.id ? <Check size={16} /> : <Search size={16} />}
-                      {selectedStrategy === item.id ? 'Dipilih untuk diskusi' : 'Bandingkan pilihan ini'}
+                      {selectedStrategy === item.id
+                        ? en
+                          ? 'Selected for discussion'
+                          : 'Dipilih untuk diskusi'
+                        : en
+                        ? 'Compare this option'
+                        : 'Bandingkan pilihan ini'}
                     </button>
                   </article>
                 ))}
               </div>
               <p className="farmer-caption">
                 <Info size={14} />
-                Perbandingan kualitatif dan manfaat potensial belum divalidasi di lapangan.
+                {en
+                  ? 'Qualitative comparisons and potential benefits have not been validated in the field.'
+                  : 'Perbandingan kualitatif dan manfaat potensial belum divalidasi di lapangan.'}
               </p>
             </section>
 
             {/* Rekomendasi Lahan */}
             <section className="farmer-recommendation">
               <div className="recommendation-story">
-                <img src="/indonesia-fields.jpg" alt="Foto ilustratif bentang pertanian di Indonesia, bukan lahan pengguna" />
+                <img
+                  src="/indonesia-fields.jpg"
+                  alt={
+                    en
+                      ? 'Illustrative photo of agricultural landscape in Indonesia, not user’s land'
+                      : 'Foto ilustratif bentang pertanian di Indonesia, bukan lahan pengguna'
+                  }
+                />
                 <div>
-                  <span>PENGETAHUAN LOKAL TETAP UTAMA</span>
+                  <span>{en ? 'LOCAL KNOWLEDGE COMES FIRST' : 'PENGETAHUAN LOKAL TETAP UTAMA'}</span>
                   <h2>
-                    Lahan berbeda.
-                    <br />
-                    Pertimbangan pun berbeda.
+                    {en ? (
+                      <>
+                        Every field is different.
+                        <br />
+                        So are its considerations.
+                      </>
+                    ) : (
+                      <>
+                        Lahan berbeda.
+                        <br />
+                        Pertimbangan pun berbeda.
+                      </>
+                    )}
                   </h2>
-                  <p>Keputusan terbaik dibuat bersama petani dan penyuluh yang mengenal lahannya.</p>
-                  <small>Foto: Iswanto Arif / Unsplash · ilustrasi</small>
+                  <p>
+                    {en
+                      ? 'The best decisions are made together with farmers and extension officers who know the land.'
+                      : 'Keputusan terbaik dibuat bersama petani dan penyuluh yang mengenal lahannya.'}
+                  </p>
+                  <small>{en ? 'Photo: Iswanto Arif / Unsplash · illustration' : 'Foto: Iswanto Arif / Unsplash · ilustrasi'}</small>
                 </div>
               </div>
 
@@ -788,8 +945,8 @@ function App() {
                     <Sprout size={22} />
                   </span>
                   <span>
-                    <small>PILIHAN DISKUSI SIMULASI</small>
-                    <h2>Rekomendasi untuk Lahan Anda</h2>
+                    <small>{en ? 'SIMULATION DISCUSSION OPTION' : 'PILIHAN DISKUSI SIMULASI'}</small>
+                    <h2>{en ? 'Recommendation for Your Land' : 'Rekomendasi untuk Lahan Anda'}</h2>
                   </span>
                 </div>
 
@@ -800,22 +957,24 @@ function App() {
                   <div>
                     <Check size={17} />
                     <p>
-                      <strong>Manfaat yang berpotensi didapat</strong>
+                      <strong>{en ? 'Potential benefits' : 'Manfaat yang berpotensi didapat'}</strong>
                       {strategy.benefit}
                     </p>
                   </div>
                   <div>
                     <TriangleAlert size={17} />
                     <p>
-                      <strong>Yang perlu diperhatikan</strong>
+                      <strong>{en ? 'Things to watch out for' : 'Yang perlu diperhatikan'}</strong>
                       {strategy.risk}
                     </p>
                   </div>
                   <div>
                     <ClipboardCheck size={17} />
                     <p>
-                      <strong>Masih perlu diperiksa</strong>
-                      Drainase, pH tanah, persediaan air, benih, biaya, dan kesepakatan kelompok tani.
+                      <strong>{en ? 'Still needs checking' : 'Masih perlu diperiksa'}</strong>
+                      {en
+                        ? 'Drainage, soil pH, water supply, seeds, costs, and farmer group agreement.'
+                        : 'Drainase, pH tanah, persediaan air, benih, biaya, dan kesepakatan kelompok tani.'}
                     </p>
                   </div>
                 </div>
@@ -823,17 +982,19 @@ function App() {
                 <div className="recommendation-actions">
                   <button className="button primary" onClick={openAudit}>
                     <BookOpen size={16} />
-                    Lihat Alasan Rekomendasi
+                    {en ? 'View Recommendation Reasoning' : 'Lihat Alasan Rekomendasi'}
                   </button>
                   <button className="button secondary" onClick={openShare} disabled={generating}>
                     <Users size={16} />
-                    Bagikan ke Kelompok Tani
+                    {en ? 'Share with Farmer Group' : 'Bagikan ke Kelompok Tani'}
                   </button>
                 </div>
 
                 <span className="withheld-note">
                   <LockKeyhole size={12} />
-                  Anjuran resmi ditahan sampai bukti dan verifikasi tersedia.
+                  {en
+                    ? 'Official advisory is withheld until evidence and verification are available.'
+                    : 'Anjuran resmi ditahan sampai bukti dan verifikasi tersedia.'}
                 </span>
               </div>
             </section>
@@ -844,23 +1005,41 @@ function App() {
                 <Share2 size={23} />
               </span>
               <div>
-                <h3>Keputusan tanam lebih baik dibicarakan bersama.</h3>
-                <p>Siapkan kartu ringan untuk bahan diskusi dengan kelompok tani dan PPL.</p>
+                <h3>
+                  {en
+                    ? 'Planting decisions are better discussed together.'
+                    : 'Keputusan tanam lebih baik dibicarakan bersama.'}
+                </h3>
+                <p>
+                  {en
+                    ? 'Prepare a lightweight summary card for discussion with your farmer group and PPL.'
+                    : 'Siapkan kartu ringan untuk bahan diskusi dengan kelompok tani dan PPL.'}
+                </p>
               </div>
               <button className="button primary" onClick={openShare} disabled={generating}>
                 <Share2 size={16} />
-                {generating ? 'Menyiapkan gambar…' : 'Bagikan Ringkasan via WhatsApp'}
+                {generating
+                  ? en
+                    ? 'Preparing image…'
+                    : 'Menyiapkan gambar…'
+                  : en
+                  ? 'Share Summary via WhatsApp'
+                  : 'Bagikan Ringkasan via WhatsApp'}
               </button>
             </div>
 
             <footer className="farmer-footer">
               <span>
                 <Sprout size={16} />
-                CYBER-KATAM · Dari bumi, untuk petani.
+                {en ? 'CYBER-KATAM · From the earth, for farmers.' : 'CYBER-KATAM · Dari bumi, untuk petani.'}
               </span>
-              <span>Prototipe simulasi. Bukan pengganti keahlian agronomi.</span>
+              <span>
+                {en
+                  ? 'Simulation prototype. Not a substitute for agronomic expertise.'
+                  : 'Prototipe simulasi. Bukan pengganti keahlian agronomi.'}
+              </span>
               <button onClick={openAudit}>
-                Audit Rekomendasi
+                {en ? 'Audit Recommendation' : 'Audit Rekomendasi'}
                 <ArrowUpRight size={13} />
               </button>
             </footer>
@@ -878,17 +1057,19 @@ function App() {
               }}
             >
               <ArrowLeft size={15} />
-              Kembali ke {mode === 'analyst' ? 'dasbor analis' : 'mode petani'}
+              {en
+                ? `Back to ${mode === 'analyst' ? 'analyst dashboard' : 'farmer mode'}`
+                : `Kembali ke ${mode === 'analyst' ? 'dasbor analis' : 'mode petani'}`}
             </button>
 
             <div className="audit-page-heading">
               <div>
-                <h1>Sertifikat Penjelasan Keputusan</h1>
+                <h1>{en ? 'Decision Explanation Certificate' : 'Sertifikat Penjelasan Keputusan'}</h1>
               </div>
               <div className="certificate-seal">
                 <Hexagon size={64} strokeWidth={1} />
                 <ShieldCheck size={28} />
-                <span>DRAF SIMULASI</span>
+                <span>{en ? 'SIMULATION DRAFT' : 'DRAF SIMULASI'}</span>
               </div>
             </div>
 
@@ -899,31 +1080,31 @@ function App() {
                   <FileCheck2 size={28} />
                 </span>
                 <div>
-                  <span className="micro-label">ID REKOMENDASI DEMO</span>
+                  <span className="micro-label">{en ? 'DEMO RECOMMENDATION ID' : 'ID REKOMENDASI DEMO'}</span>
                   <h2>CK-BMS-2026-{selectedStrategy}01</h2>
                 </div>
                 <div className="certificate-status">
                   <LockKeyhole size={15} />
-                  <strong>Abstain — Data Belum Memadai</strong>
+                  <strong>{en ? 'Abstain — Insufficient Data' : 'Abstain — Data Belum Memadai'}</strong>
                 </div>
               </div>
 
               <div className="certificate-meta">
                 <div>
-                  <span>Wilayah analisis</span>
-                  <strong>Banyumas, Jawa Tengah</strong>
+                  <span>{en ? 'Analysis region' : 'Wilayah analisis'}</span>
+                  <strong>{en ? 'Banyumas, Central Java' : 'Banyumas, Jawa Tengah'}</strong>
                 </div>
                 <div>
-                  <span>Periode analisis contoh</span>
+                  <span>{en ? 'Sample analysis period' : 'Periode analisis contoh'}</span>
                   <strong>{period}</strong>
                 </div>
                 <div>
-                  <span>Rotasi yang dikaji</span>
+                  <span>{en ? 'Evaluated rotation' : 'Rotasi yang dikaji'}</span>
                   <strong>{strategy.name}</strong>
                 </div>
                 <div>
-                  <span>Status data</span>
-                  <DemoBadge>Data Ilustratif · Belum Diverifikasi</DemoBadge>
+                  <span>{en ? 'Data status' : 'Status data'}</span>
+                  <DemoBadge lang={lang}>{en ? 'Illustrative Data · Unverified' : 'Data Ilustratif · Belum Diverifikasi'}</DemoBadge>
                 </div>
               </div>
             </section>
@@ -935,34 +1116,41 @@ function App() {
                 <BlockTitle
                   index="01"
                   icon={Satellite}
-                  title="Bukti Kuantitatif Satelit NASA"
-                  subtitle="Contoh indikator, bukan bukti observasi nyata."
+                  title={en ? 'NASA Satellite Quantitative Evidence' : 'Bukti Kuantitatif Satelit NASA'}
+                  subtitle={en ? 'Sample indicators, not verified observation evidence.' : 'Contoh indikator, bukan bukti observasi nyata.'}
+                  lang={lang}
                 />
                 <div className="evidence-table">
                   <div className="evidence-table-heading">
-                    <span>INDIKATOR / SUMBER</span>
-                    <span>NILAI / RESOLUSI</span>
+                    <span>{en ? 'INDICATOR / SOURCE' : 'INDIKATOR / SUMBER'}</span>
+                    <span>{en ? 'VALUE / RESOLUTION' : 'NILAI / RESOLUSI'}</span>
                   </div>
                   {layers.map((layer) => (
                     <div className="evidence-row" key={layer.id}>
                       <div>
                         <strong>{layer.title}</strong>
                         <span>{layer.source}</span>
-                        <small>Periode: {layer.id === 'srtm' ? 'Belum Tersedia' : period}</small>
+                        <small>
+                          {en ? 'Period' : 'Periode'}: {layer.id === 'srtm' ? (en ? 'Not Available' : 'Belum Tersedia') : period}
+                        </small>
                       </div>
                       <div>
                         <strong>
                           {layer.id === 'eco' ? `${number(32.1 + result.temperature, 1)} °C` : layer.value}
                         </strong>
-                        <span>Asli {layer.resolution}</span>
-                        <small>{layer.id === 'srtm' ? 'Belum Tersedia' : 'Data Simulasi'}</small>
+                        <span>
+                          {en ? 'Native' : 'Asli'} {layer.resolution}
+                        </span>
+                        <small>{layer.id === 'srtm' ? (en ? 'Not Available' : 'Belum Tersedia') : (en ? 'Simulation Data' : 'Data Simulasi')}</small>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="block-footnote">
                   <Info size={13} />
-                  LSTE bukan ESI. Sumber ESI dan seluruh ekspor nyata belum tersedia. SMAP/GPM tidak independen per sel H3.
+                  {en
+                    ? 'LSTE is not ESI. ESI source and full real exports are not yet available. SMAP/GPM are not independent per H3 cell.'
+                    : 'LSTE bukan ESI. Sumber ESI dan seluruh ekspor nyata belum tersedia. SMAP/GPM tidak independen per sel H3.'}
                 </div>
               </section>
 
@@ -971,16 +1159,32 @@ function App() {
                 <BlockTitle
                   index="02"
                   icon={Sprout}
-                  title="Manfaat Multi-Dimensi"
-                  subtitle="Potensi bersyarat, belum terukur di lahan."
+                  title={en ? 'Multi-Dimensional Benefits' : 'Manfaat Multi-Dimensi'}
+                  subtitle={en ? 'Conditional potential, not yet measured in the field.' : 'Potensi bersyarat, belum terukur di lahan.'}
+                  lang={lang}
                 />
                 <div className="benefit-list">
                   {[
-                    { icon: Droplets, title: 'Efisiensi air', text: strategy.water, width: strategy.waterScore },
-                    { icon: Leaf, title: 'Kesehatan tanah', text: 'Pengelolaan residu dan penutup tanah perlu ditinjau.', width: strategy.soilScore },
-                    { icon: Sprout, title: 'Penghematan pupuk', text: 'Fiksasi nitrogen tidak sama dengan pengurangan dosis pupuk.', width: 65 },
-                    { icon: ShieldCheck, title: 'Pemutusan siklus hama', text: strategy.pests, width: strategy.pestScore },
-                    { icon: Sun, title: 'Ketahanan iklim', text: 'Diversifikasi tetap bergantung pada kondisi lokal.', width: 74 },
+                    { icon: Droplets, title: en ? 'Water efficiency' : 'Efisiensi air', text: strategy.water, width: strategy.waterScore },
+                    {
+                      icon: Leaf,
+                      title: en ? 'Soil health' : 'Kesehatan tanah',
+                      text: en ? 'Residue management and ground cover must be reviewed.' : 'Pengelolaan residu dan penutup tanah perlu ditinjau.',
+                      width: strategy.soilScore,
+                    },
+                    {
+                      icon: Sprout,
+                      title: en ? 'Fertilizer savings' : 'Penghematan pupuk',
+                      text: en ? 'Nitrogen fixation does not automatically equal fertilizer dose reduction.' : 'Fiksasi nitrogen tidak sama dengan pengurangan dosis pupuk.',
+                      width: 65,
+                    },
+                    { icon: ShieldCheck, title: en ? 'Pest cycle disruption' : 'Pemutusan siklus hama', text: strategy.pests, width: strategy.pestScore },
+                    {
+                      icon: Sun,
+                      title: en ? 'Climate resilience' : 'Ketahanan iklim',
+                      text: en ? 'Diversification remains dependent on local conditions.' : 'Diversifikasi tetap bergantung pada kondisi lokal.',
+                      width: 74,
+                    },
                   ].map(({ icon: Icon, title, text, width }) => (
                     <div className="benefit-item" key={title}>
                       <span>
@@ -998,7 +1202,9 @@ function App() {
                 </div>
                 <div className="block-footnote">
                   <FlaskConical size={13} />
-                  Panjang indikator adalah ilustrasi visual, bukan besaran manfaat atau probabilitas.
+                  {en
+                    ? 'Bar length is a visual illustration, not a quantified benefit or probability.'
+                    : 'Panjang indikator adalah ilustrasi visual, bukan besaran manfaat atau probabilitas.'}
                 </div>
               </section>
 
@@ -1007,21 +1213,31 @@ function App() {
                 <BlockTitle
                   index="03"
                   icon={Info}
-                  title="Batasan Informasi Satelit"
-                  subtitle="Tidak dapat dipastikan dari satelit saja."
+                  title={en ? 'Satellite Information Limitations' : 'Batasan Informasi Satelit'}
+                  subtitle={en ? 'Cannot be determined from satellites alone.' : 'Tidak dapat dipastikan dari satelit saja.'}
+                  lang={lang}
                 />
                 <ul className="audit-list">
-                  {[
-                    'pH tanah lokal pada skala mikro',
-                    'Kondisi pintu air irigasi tersier',
-                    'Ketersediaan benih dan inokulan aktual',
-                    'Kondisi drainase dan genangan di petak',
-                    'Kendala tenaga kerja, biaya, dan alat petani',
-                  ].map((text) => (
+                  {(en
+                    ? [
+                        'Micro-scale local soil pH',
+                        'Tertiary irrigation gate condition',
+                        'Actual seed and inoculant availability',
+                        'Plot-level drainage and waterlogging condition',
+                        'Farmer labor, cost, and equipment constraints',
+                      ]
+                    : [
+                        'pH tanah lokal pada skala mikro',
+                        'Kondisi pintu air irigasi tersier',
+                        'Ketersediaan benih dan inokulan aktual',
+                        'Kondisi drainase dan genangan di petak',
+                        'Kendala tenaga kerja, biaya, dan alat petani',
+                      ]
+                  ).map((text) => (
                     <li key={text}>
                       <span className="unknown-icon">?</span>
                       <span>{text}</span>
-                      <small>Perlu cek lapangan</small>
+                      <small>{en ? 'Field check required' : 'Perlu cek lapangan'}</small>
                     </li>
                   ))}
                 </ul>
@@ -1032,17 +1248,27 @@ function App() {
                 <BlockTitle
                   index="04"
                   icon={TriangleAlert}
-                  title="Risiko Lokal"
-                  subtitle="Asumsi dan ketidakpastian yang harus ditinjau."
+                  title={en ? 'Local Risks' : 'Risiko Lokal'}
+                  subtitle={en ? 'Assumptions and uncertainties that must be reviewed.' : 'Asumsi dan ketidakpastian yang harus ditinjau.'}
+                  lang={lang}
                 />
                 <ul className="audit-list">
-                  {[
-                    'Hujan tidak pasti dan perubahan waktu tanam',
-                    'Variasi tekstur tanah serta risiko genangan',
-                    'Ledakan hama dan migrasi antarhamparan',
-                    'Pasokan benih / inokulan tidak sesuai rencana',
-                    'Keterbatasan modal, pasar, dan pelaksanaan',
-                  ].map((text) => (
+                  {(en
+                    ? [
+                        'Uncertain rainfall and shifting planting windows',
+                        'Soil texture variation and waterlogging risk',
+                        'Pest outbreaks and cross-field migration',
+                        'Seed / inoculant supply mismatch with plans',
+                        'Capital, market, and execution constraints',
+                      ]
+                    : [
+                        'Hujan tidak pasti dan perubahan waktu tanam',
+                        'Variasi tekstur tanah serta risiko genangan',
+                        'Ledakan hama dan migrasi antarhamparan',
+                        'Pasokan benih / inokulan tidak sesuai rencana',
+                        'Keterbatasan modal, pasar, dan pelaksanaan',
+                      ]
+                  ).map((text) => (
                     <li key={text}>
                       <TriangleAlert size={15} />
                       <span>{text}</span>
@@ -1050,7 +1276,9 @@ function App() {
                   ))}
                 </ul>
                 <div className="risk-callout">
-                  Jangan mengubah dosis pupuk atau waktu tanam hanya berdasarkan contoh ini.
+                  {en
+                    ? 'Do not change fertilizer doses or planting schedules based solely on this example.'
+                    : 'Jangan mengubah dosis pupuk atau waktu tanam hanya berdasarkan contoh ini.'}
                 </div>
               </section>
             </div>
@@ -1059,15 +1287,21 @@ function App() {
             <section className="gatekeeper-panel">
               <div className="gatekeeper-heading">
                 <div>
-                  <div className="eyebrow">ABSTENSI TERKENDALI · KENDALI MANUSIA</div>
-                  <h2>Gerbang Validasi Rekomendasi</h2>
-                  <p>Empat langkah berurutan. Kelulusan simulasi tidak menggantikan bukti nyata.</p>
+                  <div className="eyebrow">
+                    {en ? 'CONTROLLED ABSTENTION · HUMAN-IN-THE-LOOP' : 'ABSTENSI TERKENDALI · KENDALI MANUSIA'}
+                  </div>
+                  <h2>{en ? 'Recommendation Validation Gates' : 'Gerbang Validasi Rekomendasi'}</h2>
+                  <p>
+                    {en
+                      ? 'Four sequential steps. Passing in simulation does not replace real field evidence.'
+                      : 'Empat langkah berurutan. Kelulusan simulasi tidak menggantikan bukti nyata.'}
+                  </p>
                 </div>
                 <label className="role-select">
-                  Peran demo
-                  <select aria-label="Peran verifikasi demo" value={role} onChange={(e) => setRole(e.target.value)}>
-                    <option>Analis</option>
-                    <option>PPL</option>
+                  {en ? 'Demo role' : 'Peran demo'}
+                  <select aria-label={en ? 'Demo verification role' : 'Peran verifikasi demo'} value={role} onChange={(e) => setRole(e.target.value)}>
+                    <option value="Analis">{en ? 'Analyst' : 'Analis'}</option>
+                    <option value="PPL">PPL</option>
                   </select>
                 </label>
               </div>
@@ -1093,9 +1327,15 @@ function App() {
                       <strong>{gate.title}</strong>
                       <small>
                         {gates[index] === 'lulus'
-                          ? 'Lulus · Simulasi'
+                          ? en
+                            ? 'Passed · Simulation'
+                            : 'Lulus · Simulasi'
                           : gates[index] === 'gagal'
-                          ? 'Gagal · Simulasi'
+                          ? en
+                            ? 'Failed · Simulation'
+                            : 'Gagal · Simulasi'
+                          : en
+                          ? 'Unverified'
                           : 'Belum Diverifikasi'}
                       </small>
                     </span>
@@ -1107,7 +1347,7 @@ function App() {
               <div className="gate-detail">
                 <div className="gate-detail-copy">
                   <span className="micro-label">
-                    GERBANG 0{activeGate + 1} · {gateDefinitions[activeGate].owner.toUpperCase()}
+                    {en ? 'GATE' : 'GERBANG'} 0{activeGate + 1} · {gateDefinitions[activeGate].owner.toUpperCase()}
                   </span>
                   <h3>{gateDefinitions[activeGate].title}</h3>
                   <p>{gateDefinitions[activeGate].description}</p>
@@ -1121,17 +1361,21 @@ function App() {
                   {activeGate > 0 && gates.slice(0, activeGate).some((gate) => gate !== 'lulus') ? (
                     <div className="locked-gate">
                       <LockKeyhole size={22} />
-                      <p>Selesaikan gerbang sebelumnya dalam demo untuk mencoba tahap ini.</p>
+                      <p>
+                        {en
+                          ? 'Complete the previous gates in demo to try this stage.'
+                          : 'Selesaikan gerbang sebelumnya dalam demo untuk mencoba tahap ini.'}
+                      </p>
                     </div>
                   ) : activeGate === 3 ? (
                     <>
                       <label>
-                        Nama PPL untuk simulasi
+                        {en ? 'PPL name for simulation' : 'Nama PPL untuk simulasi'}
                         <input
-                          aria-label="Nama PPL untuk simulasi"
+                          aria-label={en ? 'PPL name for simulation' : 'Nama PPL untuk simulasi'}
                           value={signature}
                           onChange={(e) => setSignature(e.target.value)}
-                          placeholder="Contoh: Siti Rahma"
+                          placeholder={en ? 'Example: Siti Rahma' : 'Contoh: Siti Rahma'}
                           maxLength={70}
                         />
                       </label>
@@ -1141,7 +1385,9 @@ function App() {
                           checked={acknowledged}
                           onChange={(e) => setAcknowledged(e.target.checked)}
                         />
-                        Saya memahami ini bukan tanda tangan digital yang sah.
+                        {en
+                          ? 'I understand this is not a legally binding digital signature.'
+                          : 'Saya memahami ini bukan tanda tangan digital yang sah.'}
                       </label>
                       <button
                         className="button primary"
@@ -1149,30 +1395,32 @@ function App() {
                         onClick={() => verifyGate('lulus')}
                       >
                         <Fingerprint size={17} />
-                        Simulasikan Tanda Tangan PPL
+                        {en ? 'Simulate PPL Signature' : 'Simulasikan Tanda Tangan PPL'}
                       </button>
                       {role !== 'PPL' && (
-                        <small className="signature-help">Pilih peran demo PPL untuk mencoba tanda tangan.</small>
+                        <small className="signature-help">
+                          {en ? 'Select the PPL demo role to test signing.' : 'Pilih peran demo PPL untuk mencoba tanda tangan.'}
+                        </small>
                       )}
                       {signedBy && (
                         <span className="signature-record">
                           <Check size={13} />
-                          Simulasi oleh {signedBy} · hanya sesi ini
+                          {en ? `Simulated by ${signedBy} · this session only` : `Simulasi oleh ${signedBy} · hanya sesi ini`}
                         </span>
                       )}
                     </>
                   ) : (
                     <>
-                      <DemoBadge />
+                      <DemoBadge lang={lang} />
                       <button className="button primary" onClick={() => verifyGate('lulus')}>
                         <Check size={16} />
-                        Simulasikan Lulus
+                        {en ? 'Simulate Pass' : 'Simulasikan Lulus'}
                       </button>
                       <button className="button danger-outline" onClick={() => verifyGate('gagal')}>
                         <X size={16} />
-                        Simulasikan Gagal
+                        {en ? 'Simulate Fail' : 'Simulasikan Gagal'}
                       </button>
-                      <small>Tidak mengunggah bukti atau menyimpan catatan.</small>
+                      <small>{en ? 'Does not upload evidence or save permanent records.' : 'Tidak mengunggah bukti atau menyimpan catatan.'}</small>
                     </>
                   )}
                 </div>
@@ -1180,22 +1428,26 @@ function App() {
 
               <div className="verification-meter">
                 <div>
-                  <span>Gerbang demo yang lulus</span>
+                  <span>{en ? 'Demo gates passed' : 'Gerbang demo yang lulus'}</span>
                   <strong>{decision.passed}/4</strong>
                   <div className="meter-track">
                     <i style={{ width: `${decision.passed * 25}%` }} />
                   </div>
                 </div>
                 <div>
-                  <span>Kelengkapan bukti nyata</span>
+                  <span>{en ? 'Real evidence completeness' : 'Kelengkapan bukti nyata'}</span>
                   <strong>0%</strong>
                   <div className="meter-track empty" />
-                  <small>Seluruh indikator masih ilustratif.</small>
+                  <small>{en ? 'All indicators remain illustrative.' : 'Seluruh indikator masih ilustratif.'}</small>
                 </div>
                 <div>
-                  <span>Keyakinan / batas galat analitis</span>
-                  <strong className="not-calibrated">Belum terkalibrasi</strong>
-                  <small>Tidak ada persentase keyakinan yang sah. Keyakinan bukan jaminan kebenaran.</small>
+                  <span>{en ? 'Analytical confidence / error bounds' : 'Keyakinan / batas galat analitis'}</span>
+                  <strong className="not-calibrated">{en ? 'Not calibrated' : 'Belum terkalibrasi'}</strong>
+                  <small>
+                    {en
+                      ? 'No valid confidence percentage exists. Confidence is not a guarantee of truth.'
+                      : 'Tidak ada persentase keyakinan yang sah. Keyakinan bukan jaminan kebenaran.'}
+                  </small>
                 </div>
               </div>
 
@@ -1204,18 +1456,18 @@ function App() {
                   <LockKeyhole size={24} />
                 </span>
                 <div>
-                  <span>STATUS KEPUTUSAN</span>
+                  <span>{en ? 'DECISION STATUS' : 'STATUS KEPUTUSAN'}</span>
                   <h3>{decision.label}</h3>
                   <p>{decision.reason}</p>
                 </div>
-                <span className="withheld-pill">Anjuran resmi ditahan</span>
+                <span className="withheld-pill">{en ? 'Official advisory withheld' : 'Anjuran resmi ditahan'}</span>
               </div>
 
               <details className="missing-evidence">
                 <summary>
-                  Bukti yang masih diperlukan
+                  {en ? 'Evidence still required' : 'Bukti yang masih diperlukan'}
                   <span>
-                    {missingEvidence.length} kelompok bukti
+                    {missingEvidence.length} {en ? 'evidence groups' : 'kelompok bukti'}
                     <ChevronDown size={14} />
                   </span>
                 </summary>
@@ -1230,7 +1482,7 @@ function App() {
             <div className="audit-bottom">
               <span>
                 <ShieldCheck size={16} />
-                Draf simulasi · Tidak memiliki kekuatan otorisasi
+                {en ? 'Simulation draft · Has no authorization force' : 'Draf simulasi · Tidak memiliki kekuatan otorisasi'}
               </span>
               <button
                 className="button secondary"
@@ -1240,14 +1492,14 @@ function App() {
                   setSignedBy('');
                   setSignature('');
                   setAcknowledged(false);
-                  setToast('Gerbang simulasi diatur ulang.');
+                  setToast(en ? 'Simulation gates reset.' : 'Gerbang simulasi diatur ulang.');
                 }}
               >
-                Atur ulang verifikasi
+                {en ? 'Reset verification' : 'Atur ulang verifikasi'}
               </button>
               <button className="button primary" onClick={openShare} disabled={generating}>
                 <ArrowDownToLine size={16} />
-                Ringkasan untuk diskusi
+                {en ? 'Summary for discussion' : 'Ringkasan untuk diskusi'}
               </button>
             </div>
           </>
@@ -1259,7 +1511,7 @@ function App() {
         <div className="toast" role="status">
           <Info size={18} />
           {toast}
-          <button aria-label="Tutup pemberitahuan" onClick={() => setToast('')}>
+          <button aria-label={en ? 'Close notification' : 'Tutup pemberitahuan'} onClick={() => setToast('')}>
             <X size={15} />
           </button>
         </div>
@@ -1267,12 +1519,26 @@ function App() {
 
       {/* MODAL: SHARE RINGKASAN */}
       {modal === 'share' && share && (
-        <Modal title="Pratinjau Ringkasan Kelompok Tani" onClose={() => setModal(null)} className="share-modal">
+        <Modal
+          title={en ? 'Farmer Group Summary Preview' : 'Pratinjau Ringkasan Kelompok Tani'}
+          closeLabel={en ? 'Close dialog' : 'Tutup dialog'}
+          onClose={() => setModal(null)}
+          className="share-modal"
+        >
           <p className="modal-description">
-            Kartu PNG dibuat di peramban. Tinjau sebelum mengunduh atau mencoba simulasi berbagi.
+            {en
+              ? 'PNG card generated in browser. Review before downloading or testing share simulation.'
+              : 'Kartu PNG dibuat di peramban. Tinjau sebelum mengunduh atau mencoba simulasi berbagi.'}
           </p>
           <div className="share-preview">
-            <img src={share.url} alt={`Kartu ringkasan Data Simulasi ${strategy.name} untuk Banyumas dengan status abstain`} />
+            <img
+              src={share.url}
+              alt={
+                en
+                  ? `Simulation Data summary card ${strategy.name} for Banyumas with abstention status`
+                  : `Kartu ringkasan Data Simulasi ${strategy.name} untuk Banyumas dengan status abstain`
+              }
+            />
           </div>
           <div className="share-file-info">
             <span>
@@ -1281,24 +1547,26 @@ function App() {
             </span>
             <span>
               <Check size={13} />
-              Di bawah 150 KB
+              {en ? 'Under 150 KB' : 'Di bawah 150 KB'}
             </span>
           </div>
           <div className="share-actions">
             <button className="button secondary" onClick={downloadShare}>
               <ArrowDownToLine size={16} />
-              Unduh Kartu PNG
+              {en ? 'Download PNG Card' : 'Unduh Kartu PNG'}
             </button>
             <button
               className="button primary"
               onClick={() =>
                 setShareFeedback(
-                  'Simulasi berbagi selesai. Tidak ada pesan WhatsApp yang dikirim. Unduh kartu untuk berbagi sendiri.'
+                  en
+                    ? 'Share simulation complete. No WhatsApp message was sent. Download the card to share manually.'
+                    : 'Simulasi berbagi selesai. Tidak ada pesan WhatsApp yang dikirim. Unduh kartu untuk berbagi sendiri.'
                 )
               }
             >
               <Share2 size={16} />
-              Simulasikan Berbagi
+              {en ? 'Simulate Share' : 'Simulasikan Berbagi'}
             </button>
           </div>
           {shareFeedback && (
@@ -1307,16 +1575,26 @@ function App() {
               {shareFeedback}
             </p>
           )}
-          <p className="share-disclaimer">Tidak terhubung ke WhatsApp. Tidak ada pesan atau data petani yang dikirim.</p>
+          <p className="share-disclaimer">
+            {en
+              ? 'Not connected to WhatsApp. No messages or farmer data are transmitted.'
+              : 'Tidak terhubung ke WhatsApp. Tidak ada pesan atau data petani yang dikirim.'}
+          </p>
         </Modal>
       )}
 
       {/* MODAL: SUMBER & RESOLUSI DATA */}
       {modal === 'sources' && (
-        <Modal title="Sumber & Resolusi Data" onClose={() => setModal(null)}>
+        <Modal
+          title={en ? 'Data Sources & Resolution' : 'Sumber & Resolusi Data'}
+          closeLabel={en ? 'Close dialog' : 'Tutup dialog'}
+          onClose={() => setModal(null)}
+        >
           <div className="source-modal-intro">
-            <DemoBadge />
-            Seluruh nilai dalam prototipe adalah simulasi. Tidak ada observasi NASA terverifikasi.
+            <DemoBadge lang={lang} />
+            {en
+              ? 'All values in this prototype are simulated. No verified live NASA observations.'
+              : 'Seluruh nilai dalam prototipe adalah simulasi. Tidak ada observasi NASA terverifikasi.'}
           </div>
           {layers.map((layer) => (
             <div className="source-modal-row" key={layer.id}>
@@ -1326,76 +1604,61 @@ function App() {
               </div>
               <span className="source-resolution">{layer.resolution}</span>
               <p>{layer.description}</p>
-              <small>Data nyata: Belum Tersedia · periode observasi: Belum Tersedia</small>
+              <small>
+                {en
+                  ? 'Real data: Not Available · observation period: Not Available'
+                  : 'Data nyata: Belum Tersedia · periode observasi: Belum Tersedia'}
+              </small>
             </div>
           ))}
           <p className="modal-description">
-            Foto pertanian dan batas petak bersifat ilustratif. H3-7–9 diturunkan dari indeks H3 sintetis valid, bukan mask sawah.
+            {en
+              ? 'Agricultural photos and plot boundaries are illustrative. H3-7–9 are derived from valid synthetic H3 indices, not paddy masks.'
+              : 'Foto pertanian dan batas petak bersifat ilustratif. H3-7–9 diturunkan dari indeks H3 sintetis valid, bukan mask sawah.'}
           </p>
         </Modal>
       )}
 
       {/* MODAL: TENTANG PROTOTIPE */}
       {modal === 'help' && (
-        <Modal title="Tentang CYBER-KATAM" onClose={() => setModal(null)}>
+        <Modal
+          title={en ? 'About CYBER-KATAM' : 'Tentang CYBER-KATAM'}
+          closeLabel={en ? 'Close dialog' : 'Tutup dialog'}
+          onClose={() => setModal(null)}
+        >
           <div className="about-symbol">
             <Sprout size={36} />
           </div>
-          <h3>Dari observasi menuju keputusan yang dapat dijelaskan.</h3>
+          <h3>{en ? 'From observation to explainable decisions.' : 'Dari observasi menuju keputusan yang dapat dijelaskan.'}</h3>
           <p className="modal-description">
-            Prototipe ini memperagakan eksplorasi rotasi, simulasi iklim deterministik, dan empat gerbang audit. Tidak ada model iklim, AI terkalibrasi, API NASA, atau layanan tanda tangan digital yang terhubung.
+            {en
+              ? 'This prototype demonstrates crop rotation exploration, deterministic climate simulation, and four audit gates. No live climate models, calibrated AI, NASA APIs, or digital signature services are connected.'
+              : 'Prototipe ini memperagakan eksplorasi rotasi, simulasi iklim deterministik, dan empat gerbang audit. Tidak ada model iklim, AI terkalibrasi, API NASA, atau layanan tanda tangan digital yang terhubung.'}
           </p>
           <p className="modal-description">
-            Warna, skor Pareto, nilai biofisika, dan manfaat fiskal adalah Data Simulasi. Geometri H3 valid tidak berarti tutupan lahan atau indikatornya terverifikasi. Data hanya berada di memori sesi ini.
+            {en
+              ? 'Colors, Pareto scores, biophysical values, and fiscal benefits are Simulation Data. Valid H3 geometry does not mean land cover or indicators are verified. Data resides only in this session’s memory.'
+              : 'Warna, skor Pareto, nilai biofisika, dan manfaat fiskal adalah Data Simulasi. Geometri H3 valid tidak berarti tutupan lahan atau indikatornya terverifikasi. Data hanya berada di memori sesi ini.'}
           </p>
           <div className="modal-callout">
-            Petani dan PPL tetap memegang keputusan akhir. Sistem menahan anjuran resmi karena bukti nyata belum tersedia.
+            {en
+              ? 'Farmers and extension officers retain the final decision. The system withholds official advisories because real field evidence is not yet available.'
+              : 'Petani dan PPL tetap memegang keputusan akhir. Sistem menahan anjuran resmi karena bukti nyata belum tersedia.'}
           </div>
-        </Modal>
-      )}
-
-      {/* MODAL: PEMBERITAHUAN */}
-      {modal === 'notification' && (
-        <Modal title="Pemberitahuan" onClose={() => setModal(null)}>
-          <div className="notification-item">
-            <TriangleAlert size={22} />
-            <div>
-              <h3>Verifikasi belum lengkap</h3>
-              <p>Observasi nyata dan pemeriksaan lapangan belum tersedia. Tinjau gerbang validasi sebelum menafsirkan hasil demo.</p>
-              <button
-                className="button primary"
-                onClick={() => {
-                  setModal(null);
-                  openAudit();
-                }}
-              >
-                Buka Audit Rekomendasi
-                <ArrowRight size={15} />
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* MODAL: PROFIL */}
-      {modal === 'profile' && (
-        <Modal title="Profil Ruang Simulasi" onClose={() => setModal(null)}>
-          <div className="profile-demo">
-            <span className="avatar">AP</span>
-            <h3>Pengguna demo</h3>
-            <p>Peran saat ini: {mode === 'analyst' ? 'Pembuat Kebijakan' : 'Petani'}</p>
-          </div>
-          <p className="modal-description">
-            Tidak ada akun, identitas, atau data lahan tersimpan. Verifikasi dan tanda tangan hanya simulasi dalam sesi peramban ini.
-          </p>
         </Modal>
       )}
 
       {/* MODAL: PILIH PERIODE */}
       {modal === 'period' && (
-        <Modal title="Pilih Periode Contoh" onClose={() => setModal(null)}>
+        <Modal
+          title={en ? 'Select Sample Period' : 'Pilih Periode Contoh'}
+          closeLabel={en ? 'Close dialog' : 'Tutup dialog'}
+          onClose={() => setModal(null)}
+        >
           <p className="modal-description">
-            Pilihan ini mengubah periode contoh pada audit dan ringkasan, bukan mengambil observasi nyata.
+            {en
+              ? 'This selection changes the sample period in the audit and summary, without fetching real observations.'
+              : 'Pilihan ini mengubah periode contoh pada audit dan ringkasan, bukan mengambil observasi nyata.'}
           </p>
           <div className="period-options">
             {periodOptions.map((option) => (
@@ -1451,8 +1714,20 @@ function Slider({ label, unit, value, setValue, min, max, step, icon: Icon }) {
   );
 }
 
-function RiskMetric({ name, explanation, value, color, sourceNote = 'Data Simulasi' }) {
-  const level = value >= 0.7 ? 'Tinggi' : value >= 0.45 ? 'Sedang' : 'Rendah / Optimal';
+function RiskMetric({ name, explanation, value, color, sourceNote = 'Data Simulasi', lang = 'id' }) {
+  const en = lang === 'en';
+  const level =
+    value >= 0.7
+      ? en
+        ? 'High'
+        : 'Tinggi'
+      : value >= 0.45
+      ? en
+        ? 'Medium'
+        : 'Sedang'
+      : en
+      ? 'Low / Optimal'
+      : 'Rendah / Optimal';
   return (
     <div className={`risk-metric ${color}`}>
       <div>
@@ -1469,17 +1744,22 @@ function RiskMetric({ name, explanation, value, color, sourceNote = 'Data Simula
   );
 }
 
-function Pareto({ selected, onSelect }) {
+function Pareto({ selected, onSelect, strategies, lang = 'id' }) {
+  const en = lang === 'en';
   return (
     <section className="pareto-panel">
       <div className="pareto-title">
-        <h3>Perbandingan Pareto</h3>
+        <h3>{en ? 'Pareto Comparison' : 'Perbandingan Pareto'}</h3>
       </div>
       <div className="pareto-chart">
-        <span className="chart-y-label">Manfaat tanah ↑</span>
+        <span className="chart-y-label">{en ? 'Soil benefit ↑' : 'Manfaat tanah ↑'}</span>
         <svg
           viewBox="0 0 290 138"
-          aria-label="Grafik Pareto ilustratif. B menyeimbangkan skor manfaat tanah dan efisiensi air; bukan hasil optimasi."
+          aria-label={
+            en
+              ? 'Illustrative Pareto chart. B balances soil benefit score and water efficiency; not an optimization result.'
+              : 'Grafik Pareto ilustratif. B menyeimbangkan skor manfaat tanah dan efisiensi air; bukan hasil optimasi.'
+          }
         >
           <g stroke="#dfe8d9" strokeWidth="1" strokeDasharray="2 4">
             <path d="M32 18H270M32 52H270M32 86H270M32 120H270M32 18V120M90 18V120M148 18V120M206 18V120M264 18V120" />
@@ -1494,7 +1774,7 @@ function Pareto({ selected, onSelect }) {
                 className="pareto-point"
                 key={item.id}
                 role="button"
-                aria-label={`Bandingkan skenario ${item.id}`}
+                aria-label={`${en ? 'Compare scenario' : 'Bandingkan skenario'} ${item.id}`}
                 tabIndex="0"
                 onClick={() => onSelect(item.id)}
                 onKeyDown={(e) => {
@@ -1514,10 +1794,10 @@ function Pareto({ selected, onSelect }) {
             <text x="251" y="134">100</text>
           </g>
         </svg>
-        <span className="chart-x-label">Efisiensi air →</span>
+        <span className="chart-x-label">{en ? 'Water efficiency →' : 'Efisiensi air →'}</span>
       </div>
       <div className="pareto-objectives">
-        <span>Jeda hama</span>
+        <span>{en ? 'Pest break' : 'Jeda hama'}</span>
         {strategies.map((item) => (
           <span key={item.id}>
             {item.id}
@@ -1532,14 +1812,17 @@ function Pareto({ selected, onSelect }) {
   );
 }
 
-function BlockTitle({ index, icon: Icon, title, subtitle }) {
+function BlockTitle({ index, icon: Icon, title, subtitle, lang = 'id' }) {
+  const en = lang === 'en';
   return (
     <div className="block-title">
       <span className="block-icon">
         <Icon size={21} />
       </span>
       <div>
-        <span className="micro-label">BLOK {index}</span>
+        <span className="micro-label">
+          {en ? 'BLOCK' : 'BLOK'} {index}
+        </span>
         <h2>{title}</h2>
         <p>{subtitle}</p>
       </div>

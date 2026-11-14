@@ -14,11 +14,19 @@ const colors = {
   unknown: '#8ca393',
 };
 
-const conditionLabels = {
-  safe: 'Koridor rotasi relatif aman',
-  stress: 'PVRS · risiko stres akar',
-  erosion: 'BF-EHSI · risiko erosi',
-  unknown: 'Indikator tidak ditampilkan',
+const conditionLabelsByLang = {
+  id: {
+    safe: 'Koridor rotasi relatif aman',
+    stress: 'PVRS · risiko stres akar',
+    erosion: 'BF-EHSI · risiko erosi',
+    unknown: 'Indikator tidak ditampilkan',
+  },
+  en: {
+    safe: 'Relatively safe rotation corridor',
+    stress: 'PVRS · root stress risk',
+    erosion: 'BF-EHSI · erosion risk',
+    unknown: 'Indicator not shown',
+  },
 };
 
 export default function FieldMap({
@@ -30,7 +38,10 @@ export default function FieldMap({
   selectedCell,
   showGrid,
   setShowGrid,
+  lang = 'id',
 }) {
+  const conditionLabels = conditionLabelsByLang[lang] || conditionLabelsByLang.id;
+  const en = lang === 'en';
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const geojsonLayerRef = useRef(null);
@@ -222,27 +233,27 @@ export default function FieldMap({
 
       {/* Indikator Koordinat */}
       <div className="map-coordinate">
-        <span className="status-dot" /> BANYUMAS, JAWA TENGAH <span>7°27′ LS · 109°10′ BT</span>
+        <span className="status-dot" /> {en ? 'BANYUMAS, CENTRAL JAVA' : 'BANYUMAS, JAWA TENGAH'} <span>{en ? '7°27′ S · 109°10′ E' : '7°27′ LS · 109°10′ BT'}</span>
       </div>
 
       {/* Arah Mata Angin */}
       <div className="map-north">
-        <span>↑</span>U
+        <span>↑</span>{en ? 'N' : 'U'}
       </div>
 
       {/* Tombol Kontrol Peta */}
       <div className="map-tools" style={{ zIndex: 1000 }}>
-        <button aria-label="Perbesar peta" onClick={zoomIn}>
+        <button aria-label={en ? 'Zoom in' : 'Perbesar peta'} onClick={zoomIn}>
           <Plus size={17} />
         </button>
-        <button aria-label="Perkecil peta" onClick={zoomOut}>
+        <button aria-label={en ? 'Zoom out' : 'Perkecil peta'} onClick={zoomOut}>
           <Minus size={17} />
         </button>
-        <button aria-label="Atur ulang peta" onClick={resetView}>
+        <button aria-label={en ? 'Reset map view' : 'Atur ulang peta'} onClick={resetView}>
           <Crosshair size={17} />
         </button>
         <button
-          aria-label="Tampilkan kisi H3"
+          aria-label={en ? 'Toggle H3 grid' : 'Tampilkan kisi H3'}
           aria-pressed={showGrid}
           onClick={() => setShowGrid(!showGrid)}
           className={showGrid ? 'active' : ''}
@@ -253,7 +264,7 @@ export default function FieldMap({
 
       {/* Pemilihan Resolusi H3 */}
       <div className="map-resolution" style={{ zIndex: 1000, right: '110px' }}>
-        <span>Resolusi H3</span>
+        <span>{en ? 'H3 Resolution' : 'Resolusi H3'}</span>
         {[7, 8, 9].map((level) => (
           <button
             key={level}
@@ -271,24 +282,24 @@ export default function FieldMap({
 
       {/* Sumber Catatan */}
       <div className="map-source-note" style={{ zIndex: 1000 }}>
-        Citra Satelit & Peta Nyata · Google Maps / OpenStreetMap<br />
-        Hamparan H3 Sintetis · Banyumas, Jawa Tengah · Indikator: NASA GPM/SMAP/HLS/MODIS/SRTM
+        {en ? 'Satellite Imagery & Real Map · Google Maps / OpenStreetMap' : 'Citra Satelit & Peta Nyata · Google Maps / OpenStreetMap'}<br />
+        {en ? 'Synthetic H3 Overlay · Banyumas, Central Java · Indicators: NASA GPM/SMAP/HLS/MODIS/SRTM' : 'Hamparan H3 Sintetis · Banyumas, Jawa Tengah · Indikator: NASA GPM/SMAP/HLS/MODIS/SRTM'}
       </div>
 
       {/* Tooltip Hover Sel */}
       {hover && (
         <div className="hex-tooltip" role="tooltip" style={{ zIndex: 1000 }}>
-          <span>SEL H3-{resolution} · {hover.indicators ? 'DATA NASA' : 'DATA SIMULASI'}</span>
+          <span>{en ? `CELL H3-${resolution} · ${hover.indicators ? 'NASA DATA' : 'SIMULATION DATA'}` : `SEL H3-${resolution} · ${hover.indicators ? 'DATA NASA' : 'DATA SIMULASI'}`}</span>
           <strong>{hover.id}</strong>
           <p>
             <i style={{ background: colors[cellCondition(hover, activeLayers, result)] }} />
             {conditionLabels[cellCondition(hover, activeLayers, result)]}
           </p>
           {hover.indicators?.ndvi != null && (
-            <small>NDVI: {hover.indicators.ndvi.toFixed(3)} · Hujan: {hover.indicators.gpm_rain_dekad?.toFixed(1)} mm</small>
+            <small>NDVI: {hover.indicators.ndvi.toFixed(3)} · {en ? 'Rain' : 'Hujan'}: {hover.indicators.gpm_rain_dekad?.toFixed(1)} mm</small>
           )}
           {!hover.indicators && (
-            <small>Klik untuk rincian · bukan pengukuran independen</small>
+            <small>{en ? 'Click for details · not an independent measurement' : 'Klik untuk rincian · bukan pengukuran independen'}</small>
           )}
         </div>
       )}
@@ -297,8 +308,8 @@ export default function FieldMap({
       {selectedCell && (
         <div className="cell-detail" style={{ zIndex: 1000 }}>
           <div>
-            <span className="micro-label">RINCIAN SEL · {selectedCell.indicators ? 'DATA NASA RIIL' : 'DATA SIMULASI'}</span>
-            <button aria-label="Tutup rincian sel" onClick={() => onCell(null)}>
+            <span className="micro-label">{en ? `CELL DETAILS · ${selectedCell.indicators ? 'REAL NASA DATA' : 'SIMULATION DATA'}` : `RINCIAN SEL · ${selectedCell.indicators ? 'DATA NASA RIIL' : 'DATA SIMULASI'}`}</span>
+            <button aria-label={en ? 'Close cell details' : 'Tutup rincian sel'} onClick={() => onCell(null)}>
               <X size={16} />
             </button>
           </div>
@@ -309,93 +320,105 @@ export default function FieldMap({
           {selectedCell.indicators ? (
             <dl>
               <div>
-                <dt>Status Lahan</dt>
+                <dt>{en ? 'Land Status' : 'Status Lahan'}</dt>
                 <dd className={selectedCell.indicators.paddy_gate_passed ? '' : 'orange-text'}>
                   {selectedCell.indicators.paddy_fraction != null
                     ? selectedCell.indicators.paddy_gate_passed
-                      ? `✅ Terverifikasi Sawah (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
+                      ? en
+                        ? `✅ Verified Paddy (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
+                        : `✅ Terverifikasi Sawah (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
+                      : en
+                      ? '🏙️ Non-Paddy / Settlement (Sentinel-2)'
                       : '🏙️ Non-Sawah / Pemukiman (Sentinel-2)'
                     : selectedCell.indicators.paddy_gate_passed
-                    ? '✅ Terverifikasi Sawah'
+                    ? en
+                      ? '✅ Verified Paddy'
+                      : '✅ Terverifikasi Sawah'
+                    : en
+                    ? '⚠ Unverified'
                     : '⚠ Belum Terverifikasi'}
                 </dd>
               </div>
               <div>
-                <dt>Skor PVRS (Stres Akar)</dt>
+                <dt>{en ? 'PVRS Score (Root Stress)' : 'Skor PVRS (Stres Akar)'}</dt>
                 <dd><strong>{formatIndicator('pvrs', selectedCell.indicators.pvrs)}</strong></dd>
               </div>
               {selectedCell.indicators.optical_lag > 0 && (
                 <div>
                   <dt>Optical Lag</dt>
-                  <dd>{selectedCell.indicators.optical_lag} hari sebelum gejala daun</dd>
+                  <dd>{selectedCell.indicators.optical_lag} {en ? 'days before leaf symptoms' : 'hari sebelum gejala daun'}</dd>
                 </div>
               )}
               <div>
-                <dt>Vegetasi (NDVI · HLS 30m)</dt>
+                <dt>{en ? 'Vegetation (NDVI · HLS 30m)' : 'Vegetasi (NDVI · HLS 30m)'}</dt>
                 <dd>{formatIndicator('ndvi', selectedCell.indicators.ndvi)}</dd>
               </div>
               <div>
-                <dt>Kelembapan Tanah (SMAP ~9km)</dt>
+                <dt>{en ? 'Soil Moisture (SMAP ~9km)' : 'Kelembapan Tanah (SMAP ~9km)'}</dt>
                 <dd>{formatIndicator('smap_wetness', selectedCell.indicators.smap_wetness)}</dd>
               </div>
               <div>
-                <dt>Curah Hujan Dekad (GPM 0,1°)</dt>
+                <dt>{en ? 'Dekad Rainfall (GPM 0.1°)' : 'Curah Hujan Dekad (GPM 0,1°)'}</dt>
                 <dd>{formatIndicator('gpm_rain_dekad', selectedCell.indicators.gpm_rain_dekad)}</dd>
               </div>
               <div>
-                <dt>Kemiringan Lereng (SRTM 30m)</dt>
+                <dt>{en ? 'Slope (SRTM 30m)' : 'Kemiringan Lereng (SRTM 30m)'}</dt>
                 <dd>{formatIndicator('srtm_slope', selectedCell.indicators.srtm_slope)}</dd>
               </div>
               <div>
-                <dt>Anomali Suhu (MODIS LST)</dt>
+                <dt>{en ? 'Temp. Anomaly (MODIS LST)' : 'Anomali Suhu (MODIS LST)'}</dt>
                 <dd>{formatIndicator('lst_anomaly', selectedCell.indicators.lst_anomaly)}</dd>
               </div>
               <div>
-                <dt>Peringatan Erosi</dt>
+                <dt>{en ? 'Erosion Alert' : 'Peringatan Erosi'}</dt>
                 <dd className={selectedCell.indicators.erosion_alert ? 'orange-text' : ''}>
-                  {selectedCell.indicators.erosion_alert ? '⚠ Terdeteksi' : 'Tidak Terdeteksi'}
+                  {selectedCell.indicators.erosion_alert ? (en ? '⚠ Detected' : '⚠ Terdeteksi') : (en ? 'Not Detected' : 'Tidak Terdeteksi')}
                 </dd>
               </div>
               {selectedCell.indicators.confidence_pct && (
                 <div>
-                  <dt>Keyakinan Model</dt>
+                  <dt>{en ? 'Model Confidence' : 'Keyakinan Model'}</dt>
                   <dd>{number(selectedCell.indicators.confidence_pct, 1)}%</dd>
                 </div>
               )}
               {selectedCell.indicators.dekad_year && (
                 <div>
-                  <dt>Periode Data</dt>
-                  <dd>Dekad {selectedCell.indicators.dekad} · {selectedCell.indicators.dekad_year}</dd>
+                  <dt>{en ? 'Data Period' : 'Periode Data'}</dt>
+                  <dd>{en ? 'Dekad' : 'Dekad'} {selectedCell.indicators.dekad} · {selectedCell.indicators.dekad_year}</dd>
                 </div>
               )}
             </dl>
           ) : (
             <dl>
               <div>
-                <dt>Tutupan lahan</dt>
-                <dd>Belum Tersedia</dd>
+                <dt>{en ? 'Land cover' : 'Tutupan lahan'}</dt>
+                <dd>{en ? 'Not Available' : 'Belum Tersedia'}</dd>
               </div>
               <div>
-                <dt>PVRS ilustratif</dt>
+                <dt>{en ? 'Illustrative PVRS' : 'PVRS ilustratif'}</dt>
                 <dd>{number(result.pvrs)}</dd>
               </div>
               <div>
-                <dt>BF-EHSI ilustratif</dt>
+                <dt>{en ? 'Illustrative BF-EHSI' : 'BF-EHSI ilustratif'}</dt>
                 <dd>{number(result.erosion)}</dd>
               </div>
               <div>
-                <dt>Neraca air ilustratif</dt>
+                <dt>{en ? 'Illustrative water balance' : 'Neraca air ilustratif'}</dt>
                 <dd>{result.water} mm</dd>
               </div>
               <div>
-                <dt>Status verifikasi</dt>
-                <dd className="orange-text">Belum Diverifikasi</dd>
+                <dt>{en ? 'Verification status' : 'Status verifikasi'}</dt>
+                <dd className="orange-text">{en ? 'Unverified' : 'Belum Diverifikasi'}</dd>
               </div>
             </dl>
           )}
           <p>
             {selectedCell.indicators
-              ? 'Sumber: NASA GPM/SMAP/HLS/MODIS/SRTM. SMAP asli ~9 km; GPM 0,1° — bukan observasi independen per sel.'
+              ? en
+                ? 'Source: NASA GPM/SMAP/HLS/MODIS/SRTM. Native SMAP ~9 km; GPM 0.1° — not independent observations per cell.'
+                : 'Sumber: NASA GPM/SMAP/HLS/MODIS/SRTM. SMAP asli ~9 km; GPM 0,1° — bukan observasi independen per sel.'
+              : en
+              ? 'Shared scenario values on real map. Native SMAP ~9 km; GPM 0.1°.'
               : 'Nilai skenario bersama di peta riil. SMAP asli ~9 km; GPM 0,1°.'}
           </p>
         </div>
@@ -403,12 +426,12 @@ export default function FieldMap({
 
       {error && (
         <div className="map-load-status" role="alert" style={{ zIndex: 1000 }}>
-          Geometri gagal dimuat. Muat ulang halaman untuk mencoba kembali.
+          {en ? 'Failed to load geometry. Reload page to try again.' : 'Geometri gagal dimuat. Muat ulang halaman untuk mencoba kembali.'}
         </div>
       )}
       {!data && !error && (
         <div className="map-load-status" role="status" style={{ zIndex: 1000 }}>
-          Memuat citra peta & data satelit NASA…
+          {en ? 'Loading map imagery & NASA satellite data…' : 'Memuat citra peta & data satelit NASA…'}
         </div>
       )}
     </div>

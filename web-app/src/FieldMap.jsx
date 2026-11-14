@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Crosshair, Layers3, MapPin, Minus, Plus, X } from 'lucide-react';
-import { cellCondition, number } from './model';
+import { cellCondition, number, formatIndicator, indicatorSummaryLabel } from './model';
 
 const colors = { safe: '#6fdc6a', stress: '#f4716c', erosion: '#eda65b', unknown: '#83968f' };
 const conditionLabels = { safe: 'Koridor rotasi relatif aman', stress: 'PVRS · risiko stres akar', erosion: 'BF-EHSI · risiko erosi', unknown: 'Indikator tidak ditampilkan' };
@@ -40,7 +40,7 @@ export default function FieldMap({ activeLayers, result, resolution, setResoluti
         <g stroke="#d5ceb7" strokeOpacity=".34" fill="none"><path d="M90 80L180 250L430 280L750 230L970 180M180 250L140 510M430 280L500 540M750 230L850 520" strokeWidth="2" /><path d="M30 370L290 330L560 350L910 300" strokeDasharray="4 5" /></g>
         <g className="map-place"><text x="103" y="211">AJIBARANG</text><text x="545" y="223">PURWOKERTO</text><text x="744" y="420">SOKARAJA</text><text x="530" y="583">BANYUMAS</text><text x="177" y="558">WANGON</text><text x="640" y="502" className="river-label">Sungai Serayu · skematik</text></g>
         <g className="hexagons" style={{ opacity: showGrid ? 1 : 0, pointerEvents: showGrid ? 'auto' : 'none' }}>{polygons.map(cell => {
-          const condition = cellCondition(cell.id, activeLayers, result);
+          const condition = cellCondition(cell, activeLayers, result);
           const selected = selectedCell?.id === cell.id;
           return <polygon key={cell.id} points={cell.points} fill={colors[condition]} fillOpacity={selected ? .8 : .24} stroke={selected ? '#f5ffd8' : colors[condition]} strokeOpacity={selected ? 1 : .8} strokeWidth={selected ? 2.3 : resolution === 9 ? .65 : 1.2} role="button" tabIndex={showGrid ? 0 : -1} aria-label={`Pilih sel ${cell.id}`} onFocus={() => setHover(cell)} onBlur={() => setHover(null)} onMouseEnter={() => setHover(cell)} onMouseLeave={() => setHover(null)} onClick={() => select(cell)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(cell); } }} />;
         })}</g>
@@ -55,10 +55,35 @@ export default function FieldMap({ activeLayers, result, resolution, setResoluti
       <button aria-label="Tampilkan kisi H3" aria-pressed={showGrid} onClick={() => setShowGrid(!showGrid)} className={showGrid ? 'active' : ''}><Layers3 size={17} /></button>
     </div>
     <div className="map-resolution"><span>Resolusi H3</span>{[7, 8, 9].map(level => <button key={level} aria-pressed={resolution === level} className={resolution === level ? 'active' : ''} onClick={() => { setResolution(level); onCell(null); }}>{level}</button>)}</div>
-    <div className="map-source-note">Foto & batas petak ilustratif · Bukan citra NASA atau peta persil<br />Foto: Iswanto Arif / Unsplash · Geometri H3 sintetis valid</div>
-    {hover && <div className="hex-tooltip" role="tooltip"><span>SEL H3-{resolution} · DATA SIMULASI</span><strong>{hover.id}</strong><p><i style={{ background: colors[cellCondition(hover.id, activeLayers, result)] }} />{conditionLabels[cellCondition(hover.id, activeLayers, result)]}</p><small>Klik untuk rincian · bukan pengukuran independen</small></div>}
-    {selectedCell && <div className="cell-detail"><div><span className="micro-label">RINCIAN SEL · DATA SIMULASI</span><button aria-label="Tutup rincian sel" onClick={() => onCell(null)}><X size={16} /></button></div><h3><MapPin size={15} />{selectedCell.id}</h3><dl><div><dt>Tutupan lahan</dt><dd>Belum Tersedia</dd></div><div><dt>PVRS ilustratif</dt><dd>{number(result.pvrs)}</dd></div><div><dt>BF-EHSI ilustratif</dt><dd>{number(result.erosion)}</dd></div><div><dt>Neraca air ilustratif</dt><dd>{result.water} mm</dd></div><div><dt>Status verifikasi</dt><dd className="orange-text">Belum Diverifikasi</dd></div></dl><p>Nilai skenario bersama, bukan observasi spesifik sel. SMAP asli ~9 km; GPM 0,1°.</p></div>}
+    <div className="map-source-note">Foto &amp; batas petak ilustratif · Bukan citra NASA atau peta persil<br />Foto: Iswanto Arif / Unsplash · Indikator: NASA GPM/SMAP/HLS/MODIS/SRTM · Dekad 19/2025</div>
+    {hover && <div className="hex-tooltip" role="tooltip"><span>SEL H3-{resolution} · {hover.indicators ? 'DATA NASA' : 'DATA SIMULASI'}</span><strong>{hover.id}</strong><p><i style={{ background: colors[cellCondition(hover, activeLayers, result)] }} />{conditionLabels[cellCondition(hover, activeLayers, result)]}</p>{hover.indicators?.ndvi != null && <small>NDVI: {hover.indicators.ndvi.toFixed(3)} · Hujan: {hover.indicators.gpm_rain_dekad?.toFixed(1)} mm</small>}{!hover.indicators && <small>Klik untuk rincian · bukan pengukuran independen</small>}</div>}
+    {selectedCell && <div className="cell-detail"><div><span className="micro-label">RINCIAN SEL · {selectedCell.indicators ? 'DATA NASA RIIL' : 'DATA SIMULASI'}</span><button aria-label="Tutup rincian sel" onClick={() => onCell(null)}><X size={16} /></button></div><h3><MapPin size={15} />{selectedCell.id}</h3>
+      {selectedCell.indicators ? (
+        <dl>
+          <div><dt>Status Lahan</dt><dd>{selectedCell.indicators.paddy_gate_passed ? '✅ Terverifikasi Sawah' : '⚠ Belum Terverifikasi'}</dd></div>
+          <div><dt>Skor PVRS (Stres Akar)</dt><dd><strong>{formatIndicator('pvrs', selectedCell.indicators.pvrs)}</strong></dd></div>
+          {selectedCell.indicators.optical_lag > 0 && <div><dt>Optical Lag</dt><dd>{selectedCell.indicators.optical_lag} hari sebelum gejala daun</dd></div>}
+          <div><dt>Vegetasi (NDVI · HLS 30m)</dt><dd>{formatIndicator('ndvi', selectedCell.indicators.ndvi)}</dd></div>
+          <div><dt>Kelembapan Tanah (SMAP ~9km)</dt><dd>{formatIndicator('smap_wetness', selectedCell.indicators.smap_wetness)}</dd></div>
+          <div><dt>Curah Hujan Dekad (GPM 0,1°)</dt><dd>{formatIndicator('gpm_rain_dekad', selectedCell.indicators.gpm_rain_dekad)}</dd></div>
+          <div><dt>Kemiringan Lereng (SRTM 30m)</dt><dd>{formatIndicator('srtm_slope', selectedCell.indicators.srtm_slope)}</dd></div>
+          <div><dt>Anomali Suhu (MODIS LST)</dt><dd>{formatIndicator('lst_anomaly', selectedCell.indicators.lst_anomaly)}</dd></div>
+          <div><dt>Peringatan Erosi</dt><dd className={selectedCell.indicators.erosion_alert ? 'orange-text' : ''}>{selectedCell.indicators.erosion_alert ? '⚠ Terdeteksi' : 'Tidak Terdeteksi'}</dd></div>
+          {selectedCell.indicators.confidence_pct && <div><dt>Keyakinan Model</dt><dd>{number(selectedCell.indicators.confidence_pct, 1)}%</dd></div>}
+          {selectedCell.indicators.dekad_year && <div><dt>Periode Data</dt><dd>Dekad {selectedCell.indicators.dekad} · {selectedCell.indicators.dekad_year}</dd></div>}
+        </dl>
+      ) : (
+        <dl>
+          <div><dt>Tutupan lahan</dt><dd>Belum Tersedia</dd></div>
+          <div><dt>PVRS ilustratif</dt><dd>{number(result.pvrs)}</dd></div>
+          <div><dt>BF-EHSI ilustratif</dt><dd>{number(result.erosion)}</dd></div>
+          <div><dt>Neraca air ilustratif</dt><dd>{result.water} mm</dd></div>
+          <div><dt>Status verifikasi</dt><dd className="orange-text">Belum Diverifikasi</dd></div>
+        </dl>
+      )}
+      <p>{selectedCell.indicators ? 'Sumber: NASA GPM/SMAP/HLS/MODIS/SRTM. SMAP asli ~9 km; GPM 0,1° — bukan observasi independen per sel.' : 'Nilai skenario bersama, bukan observasi spesifik sel. SMAP asli ~9 km; GPM 0,1°.'}</p>
+    </div>}
     {error && <div className="map-load-status" role="alert">Geometri gagal dimuat. Muat ulang halaman untuk mencoba kembali.</div>}
-    {!data && !error && <div className="map-load-status" role="status">Memuat geometri sintetis…</div>}
+    {!data && !error && <div className="map-load-status" role="status">Memuat data satelit NASA…</div>}
   </div>;
 }

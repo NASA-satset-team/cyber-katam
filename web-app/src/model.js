@@ -32,11 +32,11 @@ export const strategies = [
 ];
 
 export const layers = [
-  { id: 'smap', name: 'SMAP L4', title: 'Kelembapan tanah', resolution: '~9 km', source: 'NASA · SPL4SMGP v8', value: '0,19 m³/m³', period: '1–10 Nov 2026', description: 'Kelembapan zona perakaran; satu piksel meliputi banyak sel H3.' },
-  { id: 'eco', name: 'ECOSTRESS', title: 'Stres evaporatif & suhu', resolution: '70 m', source: 'NASA · LSTE v2', value: '32,1 °C', period: 'Contoh akuisisi 8 Nov 2026', description: 'LST tersedia pada produk LSTE. Sumber ESI terpisah belum dipilih.' },
-  { id: 'hls', name: 'HLS v2.0', title: 'Vegetasi & spektral', resolution: '30 m', source: 'NASA · HLS L30/S30 v2', value: 'NDVI 0,64', period: '1–10 Nov 2026', description: 'Reflektansi permukaan; memerlukan penyaringan awan dan Fmask.' },
-  { id: 'gpm', name: 'GPM IMERG', title: 'Curah hujan', resolution: '0,1°', source: 'NASA · IMERG v7', value: '54 mm / 7 hari', period: '4–10 Nov 2026', description: 'Resolusi asli 0,1°; laju mm/jam harus diagregasikan secara eksplisit.' },
-  { id: 'srtm', name: 'SRTM', title: 'Elevasi & topografi', resolution: '~30 m', source: 'NASA / USGS · SRTM', value: 'Belum Tersedia', period: 'Belum Tersedia', description: 'Topografi tidak menunjukkan kondisi drainase aktual di petak.' },
+  { id: 'smap', name: 'SMAP L4', title: 'Kelembapan tanah', resolution: '~9 km', source: 'NASA · SPL4SMGP v8', value: '0,39 m³/m³', period: 'Dekad 19 · 2025', description: 'Kelembapan zona perakaran; satu piksel meliputi banyak sel H3. Data nyata dari pipeline.' },
+  { id: 'eco', name: 'ECOSTRESS', title: 'Stres evaporatif & suhu', resolution: '70 m', source: 'NASA · LSTE v2', value: '32,1 °C', period: 'Dekad 19 · 2025', description: 'LST tersedia pada produk LSTE. Sumber ESI terpisah belum dipilih.' },
+  { id: 'hls', name: 'HLS v2.0', title: 'Vegetasi & spektral', resolution: '30 m', source: 'NASA · HLS L30/S30 v2', value: 'NDVI 0,77', period: 'Dekad 19 · 2025', description: 'Reflektansi permukaan nyata. NDVI tinggi (>0,6) menunjukkan vegetasi lebat/sehat.' },
+  { id: 'gpm', name: 'GPM IMERG', title: 'Curah hujan', resolution: '0,1°', source: 'NASA · IMERG v7', value: '60,5 mm / 10 hari', period: 'Dekad 19 · 2025', description: 'Resolusi asli 0,1°; laju mm/jam harus diagregasikan secara eksplisit.' },
+  { id: 'srtm', name: 'SRTM', title: 'Elevasi & topografi', resolution: '~30 m', source: 'NASA / USGS · SRTM', value: 'Belum Tersedia', period: 'Statis (2000)', description: 'Topografi tidak menunjukkan kondisi drainase aktual di petak.' },
 ];
 
 export const gateDefinitions = [
@@ -86,8 +86,54 @@ export function updateGate(gates, index, status) {
 }
 
 export function cellCondition(cell, activeLayers, result) {
+  // Jika sel memiliki indikator nyata, gunakan indikator tersebut
+  const ind = cell?.indicators;
+  if (ind) {
+    if (activeLayers.includes('smap')) {
+      if (ind.smap_wetness !== null && ind.smap_wetness !== undefined) {
+        if (ind.smap_wetness < 0.2) return 'stress';     // sangat kering
+        if (ind.smap_wetness > 0.5) return 'erosion';    // terlalu basah/risiko genangan
+        return 'safe';
+      }
+    }
+    if (activeLayers.includes('hls')) {
+      if (ind.ndvi !== null && ind.ndvi !== undefined) {
+        if (ind.ndvi < 0.3) return 'stress';    // vegetasi sangat jarang
+        if (ind.ndvi > 0.5) return 'safe';      // vegetasi lebat/sehat
+        return 'erosion';                        // vegetasi sedang
+      }
+    }
+    if (activeLayers.includes('gpm')) {
+      if (ind.gpm_rain_dekad !== null && ind.gpm_rain_dekad !== undefined) {
+        if (ind.gpm_rain_dekad > 100) return 'erosion';  // curah hujan sangat tinggi
+        if (ind.gpm_rain_dekad < 10)  return 'stress';   // sangat kering
+        return 'safe';
+      }
+    }
+    if (activeLayers.includes('eco')) {
+      if (ind.pvrs !== null && ind.pvrs !== undefined) {
+        if (ind.pvrs >= 0.70) return 'stress';
+        if (ind.pvrs >= 0.45) return 'erosion';
+        return 'safe';
+      }
+      if (ind.lst_anomaly !== null && ind.lst_anomaly !== undefined) {
+        if (ind.lst_anomaly > 1.5) return 'stress';    // suhu jauh di atas normal
+        if (ind.lst_anomaly < -1)  return 'safe';      // suhu di bawah normal (baik)
+        return 'erosion';                              // anomali sedang
+      }
+    }
+    if (activeLayers.includes('srtm')) {
+      if (ind.srtm_slope !== null && ind.srtm_slope !== undefined) {
+        if (ind.srtm_slope > 15) return 'erosion';   // lereng curam, risiko erosi
+        if (ind.srtm_slope > 8)  return 'stress';    // lereng sedang
+        return 'safe';                               // lereng landai, aman
+      }
+    }
+    if (ind.erosion_alert) return 'erosion';
+  }
+  // Fallback ke simulasi (untuk sel tanpa indikator nyata atau resolusi 7/8)
   if (!activeLayers.length) return 'unknown';
-  const seed = [...cell].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const seed = [...(cell?.id || cell)].reduce((sum, char) => sum + char.charCodeAt(0), 0);
   if (activeLayers.includes('eco') && seed % 7 < (result.pvrs > .8 ? 4 : 2)) return 'stress';
   if (activeLayers.includes('gpm') && seed % 5 < (result.erosion > .7 ? 3 : 1)) return 'erosion';
   if (activeLayers.some(id => id !== 'srtm')) return 'safe';
@@ -96,4 +142,41 @@ export function cellCondition(cell, activeLayers, result) {
 
 export function number(value, decimals = 2) {
   return value.toLocaleString('id-ID', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+/**
+ * Format nilai indikator satelit untuk tampilan UI.
+ * Mengembalikan string yang siap ditampilkan, atau 'Belum Tersedia' jika null.
+ */
+export function formatIndicator(key, value) {
+  if (value === null || value === undefined) {
+    if (key === 'ndvi') return '☁ Tertutup Awan (QA Filter)';
+    return 'Belum Tersedia';
+  }
+  switch (key) {
+    case 'pvrs':          return `${number(value, 3)} (${value >= 0.7 ? 'Stres Kritis' : value >= 0.45 ? 'Stres Sedang' : 'Optimal / Aman'})`;
+    case 'ndvi':          return `${number(value, 3)} (${value > 0.6 ? 'Subur' : value > 0.3 ? 'Sedang' : 'Jarang'})`;
+    case 'bsi':           return number(value, 3);
+    case 'smap_wetness':  return `${number(value * 100, 1)}% vol.`;
+    case 'gpm_rain_dekad': return `${number(value, 1)} mm`;
+    case 'srtm_slope':    return `${number(value, 1)}°`;
+    case 'lst_anomaly':   return `${value >= 0 ? '+' : ''}${number(value, 2)} °C`;
+    default:              return String(value);
+  }
+}
+
+/**
+ * Mengembalikan label kondisi berdasarkan layer aktif dan indikator sel.
+ */
+export function indicatorSummaryLabel(ind, activeLayers) {
+  if (!ind) return null;
+  if (activeLayers.includes('hls') && ind.ndvi != null)
+    return ind.ndvi > 0.6 ? '🌿 Vegetasi Lebat' : ind.ndvi > 0.3 ? '🌾 Vegetasi Sedang' : '⚠ Vegetasi Jarang';
+  if (activeLayers.includes('smap') && ind.smap_wetness != null)
+    return ind.smap_wetness > 0.45 ? '💧 Tanah Sangat Lembap' : ind.smap_wetness > 0.25 ? '💧 Tanah Lembap Optimal' : '🏜 Tanah Kering';
+  if (activeLayers.includes('gpm') && ind.gpm_rain_dekad != null)
+    return ind.gpm_rain_dekad > 100 ? '⛈ Curah Hujan Sangat Tinggi' : ind.gpm_rain_dekad > 40 ? '🌧 Curah Hujan Sedang' : '☀ Curah Hujan Rendah';
+  if (activeLayers.includes('srtm') && ind.srtm_slope != null)
+    return ind.srtm_slope > 15 ? '⛰ Lereng Curam (Risiko Erosi)' : ind.srtm_slope > 8 ? '🏔 Lereng Sedang' : '🌾 Lereng Landai (Aman)';
+  return null;
 }

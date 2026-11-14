@@ -135,7 +135,22 @@ function App() {
             <section className="climate-panel"><div className="climate-title"><div><SlidersHorizontal size={17} /><h2>Simulasi Skenario Iklim</h2></div><span>DEMO DETERMINISTIK · BUKAN MODEL IKLIM</span></div><div className="climate-controls"><Slider label="Anomali curah hujan" unit="%" value={rain} setValue={setRain} min={-30} max={30} step={5} icon={CloudRain} /><Slider label="Kenaikan suhu" unit="°C" value={temperature} setValue={setTemperature} min={0} max={3} step={.5} icon={Sun} /><button className="button primary run-button" onClick={runSimulation}><Play size={15} fill="currentColor" />Jalankan Simulasi</button></div><div className="simulation-summary" aria-live="polite"><span className="summary-status"><i />{dirty ? 'Perubahan belum dijalankan' : hasRun ? 'Simulasi diperbarui' : 'Skenario dasar aktif'}</span><p>{result.summary}</p></div></section>
           </section>
           {diagnostics && <aside className="diagnostic-sidebar"><div className="diagnostic-heading"><h2>Diagnostik Biofisika & Fiskal</h2><Info size={15} /></div><div className="diagnostic-content">
-            <div className="diagnostic-kpis"><RiskMetric name="PVRS" explanation="Risiko stres akar" value={result.pvrs} color="red" /><RiskMetric name="BF-EHSI" explanation="Risiko erosi lahan bera" value={result.erosion} color="orange" /></div>
+            <div className="diagnostic-kpis">
+              <RiskMetric
+                name="PVRS"
+                explanation="Risiko stres akar (PVRSEngine)"
+                value={selectedCell?.indicators?.pvrs ?? result.pvrs}
+                color="red"
+                sourceNote={selectedCell?.indicators?.pvrs != null ? 'PVRSEngine Riil' : 'Data Simulasi'}
+              />
+              <RiskMetric
+                name="BF-EHSI"
+                explanation="Risiko erosi lahan bera"
+                value={result.erosion}
+                color="orange"
+                sourceNote="Data Simulasi"
+              />
+            </div>
             <div className="water-ledger"><span><Droplets size={15} />Neraca air ilustratif</span><strong>{result.water > 0 ? '+' : ''}{result.water}<small> mm</small></strong></div>
             <div className="diagnostic-section-title"><span>STRATEGI ROTASI TANAMAN</span><span>3 SKENARIO</span></div>
             <div className="compact-scenarios">{strategies.map(item => <button key={item.id} className={`compact-scenario ${item.id === 'B' ? 'recommended' : ''} ${selectedStrategy === item.id ? 'selected' : ''}`} aria-pressed={selectedStrategy === item.id} onClick={() => selectStrategy(item.id)}><span className="scenario-letter">{item.id}</span><span><strong>{item.name}</strong><small>{item.id === 'B' ? <><span className="status-dot" />Unggulan dalam demo</> : item.id === 'A' ? 'Pola eksisting · pembanding' : 'Alternatif diversifikasi'}</small></span><span className="scenario-radio">{selectedStrategy === item.id && <Check size={11} />}</span></button>)}</div>
@@ -192,8 +207,9 @@ function Slider({ label, unit, value, setValue, min, max, step, icon: Icon }) {
   return <label className={`climate-slider ${unit === '%' ? 'rain-slider' : 'temperature-slider'}`}><span><Icon size={15} />{label}<strong>{value > 0 || unit === '°C' ? '+' : ''}{number(value, value % 1 ? 1 : 0)}{unit}</strong></span><input aria-label={label} type="range" min={min} max={max} step={step} value={value} onChange={e => setValue(Number(e.target.value))} /><span className="range-labels"><small>{min > 0 || unit === '°C' ? '+' : ''}{min}{unit}</small><small>+{max}{unit}</small></span></label>;
 }
 
-function RiskMetric({ name, explanation, value, color }) {
-  return <div className={`risk-metric ${color}`}><div><span>{name}</span><span className="risk-level">{value >= .7 ? 'Tinggi' : 'Sedang'}</span></div><strong>{number(value)}</strong><span className="risk-metric-description">{explanation}</span><div className="risk-meter"><i style={{ width: `${value * 100}%` }} /></div><small>Data Simulasi</small></div>;
+function RiskMetric({ name, explanation, value, color, sourceNote = 'Data Simulasi' }) {
+  const level = value >= .7 ? 'Tinggi' : value >= .45 ? 'Sedang' : 'Rendah / Optimal';
+  return <div className={`risk-metric ${color}`}><div><span>{name}</span><span className="risk-level">{level}</span></div><strong>{number(value)}</strong><span className="risk-metric-description">{explanation}</span><div className="risk-meter"><i style={{ width: `${Math.min(100, Math.max(0, value * 100))}%` }} /></div><small>{sourceNote}</small></div>;
 }
 
 function Pareto({ selected, onSelect }) {

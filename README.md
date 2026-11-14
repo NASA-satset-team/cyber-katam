@@ -10,6 +10,16 @@ dashboard.
 > The only datasets currently in the repository are **synthetic fixtures** and
 > one **bounding-box** boundary. They are not NASA observations.
 
+**Interactive prototype v0.2:** the React/Vite application in `web-app/src/`
+now provides three Indonesian-language experiences: a dark geospatial analyst
+dashboard, a light Farmer/PPL mode, and a four-block XAI audit certificate with
+sequential simulated verification gates. It includes H3-7–9 geometry, five
+visual layer toggles, deterministic UI climate scenarios, three illustrative
+rotations, and a real client-rendered PNG discussion card under 150 KB.
+All environmental and fiscal values are explicitly simulated; official
+planting advice remains withheld. No NASA integration or operational AI is
+claimed. See [`docs/mvp.md`](docs/mvp.md); the Task 0 audit below remains a
+historical baseline.
 ## 1. What is true today
 
 | Area | State |

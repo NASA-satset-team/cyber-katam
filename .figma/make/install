@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+python -m pip install -r requirements.txt
+if [ -f pnpm-lock.yaml ]; then
+  exec pnpm install --frozen-lockfile
+fi
+exec pnpm install

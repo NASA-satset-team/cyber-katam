@@ -25,3 +25,25 @@ The synthetic climatology baseline is:
 When you need a canonical mock dataset for tests, copy these files into a
 timestamped fixture folder and record the provenance in the test docstring.
 Never rename them to sound like observations.
+## Generated synthetic H3 fixture (Task 2)
+
+The AI Core synthetic generator writes a separate, explicitly labelled fixture:
+
+`data/mock/banyumas_h3_synthetic.geojson`
+
+Regenerate it with:
+
+```powershell
+.venv\Scripts\python.exe -m src.engines.synthetic_h3_generator
+```
+
+Properties of this file:
+
+- exactly 1,000 valid H3 resolution-9 cells;
+- selected deterministically from the actual bounding-box ROI;
+- every attribute is synthetic and labelled as such;
+- `land_cover` is `"unverified"` (the ROI is not a paddy mask);
+- the nested contract payload is validated against the provisional schema.
+
+The file is gitignored because it is generated data. It is **not** a NASA
+observation and must not be presented as one.

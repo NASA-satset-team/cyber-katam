@@ -19,6 +19,21 @@ fixture. See `docs/project_file_inventory.md` (KI-05).
 `src/contracts/` holds the Python package that will host validators. The schema
 itself belongs here once the team ratifies it.
 
+## Provisional schema (Task 1)
+
+`grid_cell_contract.schema.json` now exists as a **PROVISIONAL** Draft 2020-12
+schema. It is derived from the sample field names, the governance documents, and
+the existing PVRS/BF-EHSI/fiscal engines. It has **not** been ratified and must
+not be presented as the official v1.0 contract.
+
+- Validator: `src/contracts/contract_validator.py`
+- Tests: `tests/test_contract_validator.py`
+- Design and unresolved decisions: `docs/contract_validator_design.md`
+
+The schema fails closed on unknown fields. Semantic rules (H3 validity, H3 parent
+consistency, unique scenario ids) are opt-in because they are not ratified.
+Arya's sample `h3_index` (`892e42426ffffff`) is not a valid H3 cell under
+`h3 4.1.2`; the sample must not be used as a golden validator fixture.
 ## Rules
 
 1. Field names, types, units, required flags, and enum values are shared API.

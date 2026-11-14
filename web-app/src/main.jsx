@@ -506,8 +506,25 @@ function App() {
 
                   <div className="diagnostic-content">
                     <div className="diagnostic-kpis">
-                      <RiskMetric name="PVRS" explanation="Risiko stres akar" value={result.pvrs} color="red" />
-                      <RiskMetric name="BF-EHSI" explanation="Risiko erosi lahan bera" value={result.erosion} color="orange" />
+                      <RiskMetric
+                        name="PVRS"
+                        explanation="Risiko stres akar (PVRSEngine)"
+                        value={selectedCell?.indicators?.pvrs ?? result.pvrs}
+                        color="red"
+                        sourceNote={selectedCell?.indicators?.pvrs != null ? 'PVRSEngine Riil' : 'Data Simulasi'}
+                      />
+                      <RiskMetric
+                        name="BF-EHSI"
+                        explanation="Risiko erosi lahan bera"
+                        value={result.erosion}
+                        color="orange"
+                        sourceNote="Data Simulasi"
+                      />
+                    </div>
+
+                    <div className="water-ledger">
+                      <span><Droplets size={15} />Neraca air ilustratif</span>
+                      <strong>{result.water > 0 ? '+' : ''}{result.water}<small> mm</small></strong>
                     </div>
 
                     <div className="diagnostic-section-title">
@@ -1434,19 +1451,20 @@ function Slider({ label, unit, value, setValue, min, max, step, icon: Icon }) {
   );
 }
 
-function RiskMetric({ name, explanation, value, color }) {
+function RiskMetric({ name, explanation, value, color, sourceNote = 'Data Simulasi' }) {
+  const level = value >= 0.7 ? 'Tinggi' : value >= 0.45 ? 'Sedang' : 'Rendah / Optimal';
   return (
     <div className={`risk-metric ${color}`}>
       <div>
         <span>{name}</span>
-        <span className="risk-level">{value >= 0.7 ? 'Tinggi' : 'Sedang'}</span>
+        <span className="risk-level">{level}</span>
       </div>
       <strong>{number(value)}</strong>
       <span className="risk-metric-description">{explanation}</span>
       <div className="risk-meter">
-        <i style={{ width: `${value * 100}%` }} />
+        <i style={{ width: `${Math.min(100, Math.max(0, value * 100))}%` }} />
       </div>
-      <small>Data Simulasi</small>
+      <small>{sourceNote}</small>
     </div>
   );
 }

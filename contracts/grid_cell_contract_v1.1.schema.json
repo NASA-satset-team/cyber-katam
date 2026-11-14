@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "grid_cell_contract_v1.1",
+  "type": "object",
+  "required": ["h3_index", "physical_indicators", "operational_flags",
+               "rotation_scenarios", "xai_decision_block", "fiscal_metrics", "system_state"],
+  "properties": {
+    "h3_index": { "type": "string", "pattern": "^8[0-9a-f]{14}$" },
+    "physical_indicators": {
+      "type": "object",
+      "required": ["pvrs", "bf_ehsi", "smap_wetness", "ecostress_esi",
+                   "lst_anomaly", "hls_bsi", "hls_ndvi", "gpm_rain_dekad", "srtm_slope"],
+      "properties": {
+        "pvrs":           { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "bf_ehsi":        { "type": ["number", "null"], "minimum": 0 },
+        "smap_wetness":   { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "ecostress_esi":  { "type": ["number", "null"] },
+        "lst_anomaly":    { "type": ["number", "null"] },
+        "hls_bsi":        { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+        "hls_ndvi":       { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+        "gpm_rain_dekad": { "type": ["number", "null"], "minimum": 0,
+                            "description": "Total hujan per dekad (10 hari), mm" },
+        "srtm_slope":     { "type": ["number", "null"], "minimum": 0 },
+        "_diagnostic":    { "type": "object" }
+      }
+    },
+    "operational_flags": {
+      "type": "object",
+      "required": ["missing_observation", "optical_lag_days", "erosion_alert"],
+      "properties": {
+        "missing_observation": { "type": "boolean" },
+        "optical_lag_days":    { "type": ["integer", "null"], "minimum": 0 },
+        "erosion_alert":       { "type": "boolean" },
+        "data_quality_flags":  { "type": "array", "items": {"type": "string"} },
+        "p95_threshold_mm_used": { "type": ["number", "null"] },
+        "hls_quality_gate_passed": { "type": "boolean" }
+      }
+    },
+    "rotation_scenarios": { "type": "array" },
+    "xai_decision_block": { "type": ["object", "null"] },
+    "fiscal_metrics": {
+      "type": "object",
+      "required": ["urea_subsidy_saved_idr", "autp_risk_reduction_pct"],
+      "properties": {
+        "urea_subsidy_saved_idr":    { "type": ["number", "null"] },
+        "autp_risk_reduction_pct":   { "type": ["number", "null"] }
+      }
+    },
+    "system_state": {
+      "type": "string",
+      "enum": ["ACTIVE_RECOMMENDATION", "ABSTAIN_FIELD_AUDIT_REQUIRED"]
+    }
+  }
+}

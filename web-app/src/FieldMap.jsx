@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Crosshair, Layers3, MapPin, Minus, Plus, X } from 'lucide-react';
-import { cellCondition, number } from './model';
+import { cellCondition, number, formatIndicator, indicatorSummaryLabel } from './model';
 
 // Titik tengah Banyumas, Jawa Tengah
 const BANYUMAS_CENTER = [-7.45, 109.17];
@@ -138,7 +138,7 @@ export default function FieldMap({
       features: cells.map((cell) => ({
         type: 'Feature',
         id: cell.id,
-        properties: { id: cell.id },
+        properties: cell,
         geometry: {
           type: 'Polygon',
           coordinates: [cell.ring],
@@ -148,7 +148,7 @@ export default function FieldMap({
 
     const layer = L.geoJSON(geojsonData, {
       style: (feature) => {
-        const condition = cellCondition(feature.id, activeLayers, result);
+        const condition = cellCondition(feature.properties, activeLayers, result);
         const isSelected = selectedCell?.id === feature.id;
         return {
           fillColor: colors[condition],
@@ -162,10 +162,10 @@ export default function FieldMap({
         l.on({
           click: () => {
             setHover(null);
-            onCell({ id: feature.id });
+            onCell(feature.properties);
           },
           mouseover: (e) => {
-            setHover({ id: feature.id });
+            setHover(feature.properties);
             const target = e.target;
             target.setStyle({
               fillOpacity: 0.65,
@@ -179,7 +179,7 @@ export default function FieldMap({
           mouseout: (e) => {
             setHover(null);
             const isSelected = selectedCell?.id === feature.id;
-            const condition = cellCondition(feature.id, activeLayers, result);
+            const condition = cellCondition(feature.properties, activeLayers, result);
             e.target.setStyle({
               fillColor: colors[condition],
               fillOpacity: isSelected ? 0.75 : 0.28,
@@ -257,19 +257,24 @@ export default function FieldMap({
       {/* Sumber Catatan */}
       <div className="map-source-note" style={{ zIndex: 1000 }}>
         Citra Satelit & Peta Nyata · Google Maps / OpenStreetMap<br />
-        Hamparan H3 Sintetis · Banyumas, Jawa Tengah
+        Hamparan H3 Sintetis · Banyumas, Jawa Tengah · Indikator: NASA GPM/SMAP/HLS/MODIS/SRTM
       </div>
 
       {/* Tooltip Hover Sel */}
       {hover && (
         <div className="hex-tooltip" role="tooltip" style={{ zIndex: 1000 }}>
-          <span>SEL H3-{resolution} · DATA SIMULASI</span>
+          <span>SEL H3-{resolution} · {hover.indicators ? 'DATA NASA' : 'DATA SIMULASI'}</span>
           <strong>{hover.id}</strong>
           <p>
-            <i style={{ background: colors[cellCondition(hover.id, activeLayers, result)] }} />
-            {conditionLabels[cellCondition(hover.id, activeLayers, result)]}
+            <i style={{ background: colors[cellCondition(hover, activeLayers, result)] }} />
+            {conditionLabels[cellCondition(hover, activeLayers, result)]}
           </p>
-          <small>Klik untuk rincian · bukan pengukuran independen</small>
+          {hover.indicators?.ndvi != null && (
+            <small>NDVI: {hover.indicators.ndvi.toFixed(3)} · Hujan: {hover.indicators.gpm_rain_dekad?.toFixed(1)} mm</small>
+          )}
+          {!hover.indicators && (
+            <small>Klik untuk rincian · bukan pengukuran independen</small>
+          )}
         </div>
       )}
 
@@ -277,7 +282,7 @@ export default function FieldMap({
       {selectedCell && (
         <div className="cell-detail" style={{ zIndex: 1000 }}>
           <div>
-            <span className="micro-label">RINCIAN SEL · DATA SIMULASI</span>
+            <span className="micro-label">RINCIAN SEL · {selectedCell.indicators ? 'DATA NASA RIIL' : 'DATA SIMULASI'}</span>
             <button aria-label="Tutup rincian sel" onClick={() => onCell(null)}>
               <X size={16} />
             </button>
@@ -286,29 +291,90 @@ export default function FieldMap({
             <MapPin size={15} />
             {selectedCell.id}
           </h3>
-          <dl>
-            <div>
-              <dt>Tutupan lahan</dt>
-              <dd>Belum Tersedia</dd>
-            </div>
-            <div>
-              <dt>PVRS ilustratif</dt>
-              <dd>{number(result.pvrs)}</dd>
-            </div>
-            <div>
-              <dt>BF-EHSI ilustratif</dt>
-              <dd>{number(result.erosion)}</dd>
-            </div>
-            <div>
-              <dt>Neraca air ilustratif</dt>
-              <dd>{result.water} mm</dd>
-            </div>
-            <div>
-              <dt>Status verifikasi</dt>
-              <dd className="orange-text">Belum Diverifikasi</dd>
-            </div>
-          </dl>
-          <p>Nilai skenario bersama di peta riil. SMAP asli ~9 km; GPM 0,1°.</p>
+          {selectedCell.indicators ? (
+            <dl>
+              <div>
+                <dt>Status Lahan</dt>
+                <dd>{selectedCell.indicators.paddy_gate_passed ? '✅ Terverifikasi Sawah' : '⚠ Belum Terverifikasi'}</dd>
+              </div>
+              <div>
+                <dt>Skor PVRS (Stres Akar)</dt>
+                <dd><strong>{formatIndicator('pvrs', selectedCell.indicators.pvrs)}</strong></dd>
+              </div>
+              {selectedCell.indicators.optical_lag > 0 && (
+                <div>
+                  <dt>Optical Lag</dt>
+                  <dd>{selectedCell.indicators.optical_lag} hari sebelum gejala daun</dd>
+                </div>
+              )}
+              <div>
+                <dt>Vegetasi (NDVI · HLS 30m)</dt>
+                <dd>{formatIndicator('ndvi', selectedCell.indicators.ndvi)}</dd>
+              </div>
+              <div>
+                <dt>Kelembapan Tanah (SMAP ~9km)</dt>
+                <dd>{formatIndicator('smap_wetness', selectedCell.indicators.smap_wetness)}</dd>
+              </div>
+              <div>
+                <dt>Curah Hujan Dekad (GPM 0,1°)</dt>
+                <dd>{formatIndicator('gpm_rain_dekad', selectedCell.indicators.gpm_rain_dekad)}</dd>
+              </div>
+              <div>
+                <dt>Kemiringan Lereng (SRTM 30m)</dt>
+                <dd>{formatIndicator('srtm_slope', selectedCell.indicators.srtm_slope)}</dd>
+              </div>
+              <div>
+                <dt>Anomali Suhu (MODIS LST)</dt>
+                <dd>{formatIndicator('lst_anomaly', selectedCell.indicators.lst_anomaly)}</dd>
+              </div>
+              <div>
+                <dt>Peringatan Erosi</dt>
+                <dd className={selectedCell.indicators.erosion_alert ? 'orange-text' : ''}>
+                  {selectedCell.indicators.erosion_alert ? '⚠ Terdeteksi' : 'Tidak Terdeteksi'}
+                </dd>
+              </div>
+              {selectedCell.indicators.confidence_pct && (
+                <div>
+                  <dt>Keyakinan Model</dt>
+                  <dd>{number(selectedCell.indicators.confidence_pct, 1)}%</dd>
+                </div>
+              )}
+              {selectedCell.indicators.dekad_year && (
+                <div>
+                  <dt>Periode Data</dt>
+                  <dd>Dekad {selectedCell.indicators.dekad} · {selectedCell.indicators.dekad_year}</dd>
+                </div>
+              )}
+            </dl>
+          ) : (
+            <dl>
+              <div>
+                <dt>Tutupan lahan</dt>
+                <dd>Belum Tersedia</dd>
+              </div>
+              <div>
+                <dt>PVRS ilustratif</dt>
+                <dd>{number(result.pvrs)}</dd>
+              </div>
+              <div>
+                <dt>BF-EHSI ilustratif</dt>
+                <dd>{number(result.erosion)}</dd>
+              </div>
+              <div>
+                <dt>Neraca air ilustratif</dt>
+                <dd>{result.water} mm</dd>
+              </div>
+              <div>
+                <dt>Status verifikasi</dt>
+                <dd className="orange-text">Belum Diverifikasi</dd>
+              </div>
+            </dl>
+          )}
+          <p>
+            {selectedCell.indicators
+              ? 'Sumber: NASA GPM/SMAP/HLS/MODIS/SRTM. SMAP asli ~9 km; GPM 0,1° — bukan observasi independen per sel.'
+              : 'Nilai skenario bersama di peta riil. SMAP asli ~9 km; GPM 0,1°.'}
+          </p>
         </div>
       )}
 
@@ -319,7 +385,7 @@ export default function FieldMap({
       )}
       {!data && !error && (
         <div className="map-load-status" role="status" style={{ zIndex: 1000 }}>
-          Memuat citra peta & geometri…
+          Memuat citra peta & data satelit NASA…
         </div>
       )}
     </div>

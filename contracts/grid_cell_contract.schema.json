@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "PROVISIONAL SCHEMA - NOT RATIFIED. Derived from external/aryas_workresult/grid_cell_contract_sample.json, external/aryas_workresult/fiscal_actuarial.py, and the CYBER-KATAM governance documents. Do not treat structural success as proof that NASA observations are correct. See docs/contract_validator_design.md for unresolved decisions.",
+  "title": "CYBER-KATAM Grid Cell Contract v1.0 (PROVISIONAL)",
+  "description": "Provisional JSON Schema for one H3 grid-cell contract consumed by the AI Core. Field names follow the v1.0 sample. Ranges are recorded only where an existing engine or contract document defines them; unresolved ranges are intentionally left unbounded. Additional properties are rejected provisionally (fail-closed policy) pending contract ratification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "h3_index",
+    "physical_indicators",
+    "operational_flags",
+    "rotation_scenarios",
+    "xai_decision_block",
+    "fiscal_metrics",
+    "system_state"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Contract version. The governance document records v1.0 as current; no v1.0 schema has been formally ratified yet."
+    },
+    "h3_index": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{15}$",
+      "description": "H3 cell index as a lowercase hexadecimal string. Resolution is not enforced by the schema because it has not been ratified; H3 validity is an opt-in provisional semantic rule."
+    },
+    "h3_parent_res7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{15}$",
+      "description": "Optional H3 parent cell at resolution 7. Required-vs-optional status is unresolved. When present, parent consistency is an opt-in provisional semantic rule."
+    },
+    "physical_indicators": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "PVRS",
+        "BF_EHSI",
+        "SMAP_wetness",
+        "ECOSTRESS_ESI",
+        "LST_anomaly",
+        "HLS_BSI",
+        "HLS_NDVI",
+        "GPM_rain_7d",
+        "SRTM_slope"
+      ],
+      "description": "Physical indicator block. All fields are required and non-null in this provisional schema; the nullable policy for missing observations is unresolved.",
+      "properties": {
+        "PVRS": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Pre-Visual Root-Stress Score. Bounded [0, 1] by the sigmoid in external/aryas_workresult/pvrs_engine.py."
+        },
+        "BF_EHSI": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2.5,
+          "description": "Bare-Field Erosion and Heat Shock Index. external/aryas_workresult/bf_ehsi_engine.py clips the instantaneous value to [0, 2.5]."
+        },
+        "SMAP_wetness": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Root-zone volumetric water content (m3/m3). The schema uses the physical [0, 1] domain; the engine's inversion bounds (theta_residual=0.11, theta_saturated=0.48) are narrower and have not been ratified as a contract range."
+        },
+        "ECOSTRESS_ESI": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Evaporative Stress Index (ET/PET ratio), documented in pvrs_engine.py as [0.0, 1.0]."
+        },
+        "LST_anomaly": {
+          "type": "number",
+          "description": "Land-surface temperature anomaly in degrees Celsius. May be negative. No minimum or maximum is asserted because the contract has not ratified a bound."
+        },
+        "HLS_BSI": {
+          "type": "number",
+          "minimum": -1.0,
+          "maximum": 1.0,
+          "description": "HLS bare-soil index. Range [-1, 1] follows the MBSI definition used by bf_ehsi_engine.py; whether HLS_BSI is exactly MBSI is unresolved."
+        },
+        "HLS_NDVI": {
+          "type": "number",
+          "minimum": -1.0,
+          "maximum": 1.0,
+          "description": "HLS normalized difference vegetation index, documented in pvrs_engine.py as [-1.0, 1.0]."
+        },
+        "GPM_rain_7d": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Seven-day GPM precipitation accumulation in millimetres. Non-negative; no upper bound is asserted."
+        },
+        "SRTM_slope": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 90.0,
+          "description": "SRTM slope in degrees. Physical domain [0, 90]; no stricter contract bound has been ratified."
+        }
+      }
+    },
+    "operational_flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "missing_observation",
+        "optical_lag_days",
+        "erosion_alert"
+      ],
+      "description": "Operational flags. missing_observation is independent of indicator values and does not imply that an indicator may be replaced by zero.",
+      "properties": {
+        "missing_observation": {
+          "type": "boolean",
+          "description": "True when an observation required by the contract is unavailable. Nullable indicator policy is unresolved."
+        },
+        "optical_lag_days": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 14,
+          "description": "Estimated optical-lag days. pvrs_engine.py returns 0 or a clipped value in [1, 14]."
+        },
+        "erosion_alert": {
+          "type": "boolean",
+          "description": "Operational erosion alert. The contract does not yet define whether this is equivalent to any single BF-EHSI threshold."
+        }
+      }
+    },
+    "rotation_scenarios": {
+      "type": "array",
+      "minItems": 0,
+      "description": "Rotation scenario candidates. The required number of scenarios is unresolved, so no minimum count above zero is enforced provisionally.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "crop_sequence",
+          "water_demand_mm",
+          "n_fertilizer_displaced_kg",
+          "soc_change_ton",
+          "bph_risk_score",
+          "net_margin_idr"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Scenario identifier. Uniqueness is an opt-in provisional semantic rule."
+          },
+          "crop_sequence": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable crop rotation sequence."
+          },
+          "water_demand_mm": {
+            "type": "number",
+            "minimum": 0.0,
+            "description": "Seasonal water demand in millimetres. Non-negative; no upper bound is asserted."
+          },
+          "n_fertilizer_displaced_kg": {
+            "type": "number",
+            "minimum": 0.0,
+            "description": "Nitrogen fertilizer displaced in kilograms per hectare. The Permentan cap (163 kg/ha) appears in fiscal_actuarial.py but has not been ratified as a scenario-schema maximum."
+          },
+          "soc_change_ton": {
+            "type": "number",
+            "description": "Soil organic carbon change in tonnes. May be negative (the existing scenario uses -0.42)."
+          },
+          "bph_risk_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Brown planthopper burden index. RotationCandidate documents [0.0, 1.0]."
+          },
+          "net_margin_idr": {
+            "type": "number",
+            "description": "Net margin in Indonesian rupiah. May be negative; no bound is asserted."
+          }
+        }
+      }
+    },
+    "xai_decision_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "why_suggested",
+        "multi_benefits",
+        "information_gaps",
+        "local_risks_and_gates"
+      ],
+      "description": "Explainability block. Text content is not validated for factual accuracy.",
+      "properties": {
+        "why_suggested": {
+          "type": "string",
+          "minLength": 1
+        },
+        "multi_benefits": {
+          "type": "string",
+          "minLength": 1
+        },
+        "information_gaps": {
+          "type": "string",
+          "minLength": 1
+        },
+        "local_risks_and_gates": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "fiscal_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "urea_subsidy_saved_idr",
+        "autp_risk_reduction_pct"
+      ],
+      "description": "Fiscal metrics. Only the two fields explicitly named in the task contract are required provisionally; the cluster-level fields present in Arya's sample are accepted as optional fields.",
+      "properties": {
+        "urea_subsidy_saved_idr": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Urea subsidy saving in Indonesian rupiah per hectare. Non-negative."
+        },
+        "cluster_h3_7_gross_saving_idr": {
+          "type": "number",
+          "minimum": 0.0,
+          "description": "Optional H3-7 cluster gross saving in Indonesian rupiah. Present in Arya's sample; not named in the task-level required set."
+        },
+        "cluster_h3_7_net_saving_s_net_idr": {
+          "type": "number",
+          "description": "Optional H3-7 cluster net saving in Indonesian rupiah. May be negative after governance costs."
+        },
+        "autp_risk_reduction_pct": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "AUTP risk reduction as a percentage. Bounded [0, 100]."
+        }
+      }
+    },
+    "system_state": {
+      "type": "string",
+      "enum": [
+        "ACTIVE_RECOMMENDATION",
+        "ABSTAIN_AUDIT_REQUIRED",
+        "ABSTAIN_FIELD_AUDIT_REQUIRED"
+      ],
+      "description": "System state. Both abstention spellings found in the repository are accepted provisionally; the final abstention name is unresolved and must be ratified."
+    }
+  }
+}

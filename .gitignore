@@ -54,6 +54,9 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Generated synthetic H3 fixture (reproducible with src.engines.synthetic_h3_generator)
+data/mock/banyumas_h3_synthetic.geojson
+
 # Common large geospatial/raster outputs anywhere in the repo
 *.tif
 *.tiff

@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kabupaten Banyumas - Sawah Focus Zone",
+        "province": "Jawa Tengah",
+        "regency": "Banyumas",
+        "epsg": 4326
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              108.92,
+              -7.6
+            ],
+            [
+              109.38,
+              -7.6
+            ],
+            [
+              109.38,
+              -7.25
+            ],
+            [
+              108.92,
+              -7.25
+            ],
+            [
+              108.92,
+              -7.6
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

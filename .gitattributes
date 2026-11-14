@@ -1,0 +1,19 @@
+# Normalize line endings across Windows/Linux contributors.
+* text=auto eol=lf
+
+*.py      text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.geojson text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.toml    text eol=lf
+*.txt     text eol=lf
+
+# Binary assets must never be normalized.
+*.parquet binary
+*.xlsx    binary
+*.zip     binary
+*.png     binary
+*.jpg     binary
+*.pdf     binary

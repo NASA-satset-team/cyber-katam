@@ -1,0 +1,22 @@
+# ---------------------------------------------------------------------------
+# CYBER-KATAM OPTIONAL dependencies
+# ---------------------------------------------------------------------------
+# NOT installed by default and NOT yet verified in this repository.
+# Install only when your task actually needs it:
+#
+#   python -m pip install -r requirements-optional.txt
+#
+# Python 3.12 is strongly recommended on Windows: the geospatial stack
+# (geopandas/rasterio/shapely/pyproj) publishes reliable cp312 wheels.
+# Pin these after a successful install and record the result in
+# docs/nasa_data_inventory.md or the relevant PR.
+# ---------------------------------------------------------------------------
+
+# NASA / Google Earth Engine data acquisition
+earthengine-api>=1.4,<2
+earthaccess>=0.11
+
+# Geospatial vector/raster processing
+geopandas>=1.0
+shapely>=2.0
+rasterio>=1.4

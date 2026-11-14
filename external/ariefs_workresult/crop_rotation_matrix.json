@@ -1,0 +1,53 @@
+{
+    "metadata": {
+        "region": "Banyumas",
+        "description": "Parameter agronomi untuk 3 skenario rotasi tanam",
+        "version": "1.0"
+    },
+    "scenarios": {
+        "skenario_1": {
+            "name": "Padi - Bera",
+            "description": "Rotasi tradisional dengan masa bera (kosong) setelah panen padi.",
+            "crops": [
+                "Padi",
+                "Bera"
+            ],
+            "parameters": {
+                "water_requirement_mm_per_season": 800,
+                "soil_moisture_threshold": 0.6,
+                "expected_yield_ton_per_ha": 6.5,
+                "drought_vulnerability": "High"
+            }
+        },
+        "skenario_2": {
+            "name": "Padi - Kedelai - Sorghum",
+            "description": "Rotasi intensif tahan kering. Sorghum ditanam di musim kemarau.",
+            "crops": [
+                "Padi",
+                "Kedelai",
+                "Sorghum"
+            ],
+            "parameters": {
+                "water_requirement_mm_per_season": 1200,
+                "soil_moisture_threshold": 0.4,
+                "expected_yield_ton_per_ha": 9.0,
+                "drought_vulnerability": "Low"
+            }
+        },
+        "skenario_3": {
+            "name": "Padi - Bawang - Legum",
+            "description": "Rotasi nilai ekonomi tinggi dengan tanaman penutup tanah (legum).",
+            "crops": [
+                "Padi",
+                "Bawang Merah",
+                "Legum"
+            ],
+            "parameters": {
+                "water_requirement_mm_per_season": 1050,
+                "soil_moisture_threshold": 0.5,
+                "expected_yield_ton_per_ha": 8.5,
+                "drought_vulnerability": "Medium"
+            }
+        }
+    }
+}

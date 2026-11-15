@@ -129,6 +129,15 @@ select { cursor: pointer; }
 .map-card-heading > span { display: flex; align-items: center; gap: 5px; color: #5f785b; font-size: 11px; letter-spacing: 0.5px; font-weight: 600; text-transform: uppercase; }
 .map-card-heading > span > i { width: 6px; height: 6px; background: var(--golden); border-radius: 50%; }
 
+.live-weather { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel); color: var(--ink); font-size: 12px; white-space: nowrap; }
+.live-weather svg { color: var(--accent); }
+.live-weather strong { font-size: 12px; }
+.live-weather span { color: var(--muted); }
+.live-weather small { color: var(--muted); font-size: 10px; letter-spacing: .4px; }
+.live-weather .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; }
+.live-weather button { display: inline-flex; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px; }
+.live-weather button:hover { color: var(--accent); }
+
 .map-stage { position: relative; height: 603px; overflow: hidden; }
 .geo-canvas { position: absolute; inset: 0; overflow: hidden; background: #263c33; }
 .aerial-background { position: absolute; inset: -6%; background: linear-gradient(90deg, #1b2f2966, #21453624 50%, #16292566), url('/indonesia-fields.jpg') center/cover; filter: saturate(.42) brightness(.72); opacity: .94; transform: rotate(-4deg) scale(1.08); }

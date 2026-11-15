@@ -52,6 +52,7 @@ import {
   periodOptionsByLang,
 } from './i18n';
 import { createInfographic } from './share';
+import LiveWeather from './LiveWeather';
 import './styles.css';
 
 const LazyMap = React.lazy(() => import('./FieldMap'));
@@ -421,6 +422,7 @@ function App() {
                       <Globe2 size={16} />
                       {en ? 'Land Intelligence Map' : 'Peta Intelijen Lahan'}
                     </h2>
+                    <LiveWeather lang={lang} />
                   </div>
 
                   <div className="map-stage">

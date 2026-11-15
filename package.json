@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.11.0",
   "scripts": {
     "dev": "vite",
+    "api": "python -m uvicorn src.api.predict_server:app --host 127.0.0.1 --port 8000",
     "build": "vite build",
     "test": "vitest run",
     "test:ui": "playwright test"

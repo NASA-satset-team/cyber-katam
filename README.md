@@ -1,193 +1,408 @@
-# CYBER-KATAM — Data Processing & Spatial Analysis Layer
+# CYBER-KATAM
 
 **Closed-Loop Dynamic Transition-Window Governance & Fiscal-Actuarial Clearing Engine**
 
-NASA Space Apps Challenge 2026 · Team **Satset Team wkwkwk** · [Team page](https://www.spaceappschallenge.org/2026/find-a-team/1618-12112026-rifaldi-rpl-61-satset-team-wkwkwk/?tab=project) · [Main team repository](https://github.com/NASA-satset-team/cyber-katam)
+CYBER-KATAM is an integrated, data-driven agricultural decision support system that improves how agricultural transitions are evaluated, planned, and managed. It combines NASA Earth observation data, geospatial analysis, crop modeling, external weather forecasts from Meteomatics, and economic, fiscal, and actuarial assessments.
 
-Pilot area: **Banyumas, Central Java, Indonesia** (monsoon paddy–palawija landscape).
+The system connects environmental monitoring with crop suitability, water-balance calculations, multi-season crop rotation planning, and short-term agricultural advisories. Its Integration & Decision Engine brings these outputs together to evaluate transition opportunities while considering environmental constraints, resource availability, and financial implications. The pilot area is **Banyumas, Central Java, Indonesia**.
 
-> **Scope of this repository.** CYBER-KATAM is a team-wide, modular decision-support system. This repository implements its **Data Processing & Spatial Analysis layer**: NASA/ESA satellite ingestion via Google Earth Engine, quality control, unit normalization, temporal alignment, H3 spatial indexing, provenance and missing-value preservation, and the standardized daily per-cell inputs and environmental indicator payloads consumed by the modeling modules. The Crop Modeling, Economic/Fiscal/Actuarial Modeling, Meteomatics forecast integration, Integration & Decision Engine, and the web application are developed in the [main team repository](https://github.com/NASA-satset-team/cyber-katam) and are **not** claimed as implemented here.
+> CYBER-KATAM supports human decision-making. It does not replace farmers' experience and does not guarantee agricultural outcomes.
 
 ---
 
-## 1. Project overview
+## Table of Contents
 
-CYBER-KATAM is an integrated, data-driven agricultural decision-support system connecting NASA Earth observation, geospatial analysis, crop modeling, external weather forecasts (Meteomatics Weather API, a NASA Space Apps Challenge partner resource), and economic/fiscal/actuarial assessment. It links environmental monitoring with crop suitability, water-balance calculations, multi-season rotation planning, and short-term advisories, so that agricultural transitions are evaluated against environmental constraints, resource availability, and financial implications.
+- [Overview](#overview)
+- [Problem Statement](#problem-statement)
+- [Project Objectives](#project-objectives)
+- [System Architecture](#system-architecture)
+- [Data Sources and Resources](#data-sources-and-resources)
+- [Data Processing and Spatial Framework](#data-processing-and-spatial-framework)
+- [Modeling Methodology](#modeling-methodology)
+  - [Historical & Spatial Modeling](#historical--spatial-modeling)
+  - [Crop Modeling](#crop-modeling)
+  - [Economic, Fiscal & Actuarial Modeling](#economic-fiscal--actuarial-modeling)
+- [External Weather Forecast Integration](#external-weather-forecast-integration)
+- [Integration & Decision Engine](#integration--decision-engine)
+- [Explainability and Human Verification](#explainability-and-human-verification)
+- [Innovation and Creativity](#innovation-and-creativity)
+- [Intended Impact](#intended-impact)
+- [Limitations and Future Development](#limitations-and-future-development)
+- [Tech Stack](#tech-stack)
+- [Acknowledgements](#acknowledgements)
 
-The system is intended to **support human decision-making, not replace farmers' experience or guarantee agricultural outcomes**.
+---
 
-## 2. System architecture & module status
+## Overview
 
+CYBER-KATAM addresses the interconnected challenges faced by farmers and agricultural stakeholders: soil moisture variability, environmental stress, crop suitability, water availability, crop rotation planning, extreme weather risks, fertilizer requirements, and financial feasibility.
+
+Rather than analyzing these factors independently, it connects them through a modular architecture. Environmental and agricultural data are processed by three main modeling modules:
+
+1. **Historical & Spatial Modeling**
+2. **Crop Modeling**
+3. **Economic, Fiscal & Actuarial Modeling**
+
+External weather forecasts are retrieved from Meteomatics through its Weather API, provided as a resource for NASA Space Apps Challenge participants. Outputs are combined by the **Integration & Decision Engine** and presented through a web application for farmers and other stakeholders.
+
+The architecture is designed to be adaptable to other agricultural regions when relevant local data and parameters are available.
+
+## Problem Statement
+
+Agricultural decisions involve multiple interconnected factors. A crop may suit an area but need more water than is available; a rotation strategy may bring soil benefits but add production costs; a field may look healthy from satellite vegetation indicators while experiencing underlying water stress. These are hard to address with a single dataset or method. Key problems include:
+
+- Limited integration of environmental, agronomic, meteorological, and economic information.
+- Differences in soil moisture and land characteristics across locations.
+- Uncertainty in water availability and short-term weather.
+- Difficulty evaluating alternative crop sequences over multiple growing seasons.
+- Potential soil degradation and erosion during exposed or fallow periods.
+- Fertilizer requirements and the relationship between crop rotation and nutrient management.
+- Financial and agricultural insurance risks associated with farming decisions.
+
+## Project Objectives
+
+- Integrate NASA Earth observation data, satellite-derived indicators, agricultural references, local information, and external weather forecasts.
+- Analyze environmental and spatial conditions across agricultural areas.
+- Evaluate crop suitability, crop water requirements, planting calendars, and crop rotation alternatives.
+- Support short-term operational decisions using external weather forecasts.
+- Estimate potential economic, fiscal, fertilizer-related, and agricultural insurance implications.
+- Combine outputs from different modules into interpretable decision support.
+- Present results through an accessible web application.
+- Preserve data provenance, uncertainty, and missing-information status to avoid unsupported recommendations.
+
+## System Architecture
+
+```mermaid
+flowchart TD
+    A[Data Sources<br/>NASA products · Meteomatics · Agricultural references] --> B[Data Processing & Spatial Analysis<br/>Validation · Unit normalization · Temporal alignment · H3 indexing]
+    B --> C1[Historical & Spatial Modeling]
+    B --> C2[Crop Modeling]
+    B --> C3[Economic, Fiscal & Actuarial Modeling]
+    M[Meteomatics Weather API] --> C2
+    M --> D
+    C1 --> D[Integration & Decision Engine]
+    C2 --> D
+    C3 --> D
+    D --> E[Agricultural Decision Support<br/>Web Application]
 ```
-NASA/ESA data + GEE ──► Data Processing & Spatial Analysis ──► Historical & Spatial Modeling ─
-ESA WorldCover, H3      (THIS REPOSITORY)                    Crop Modeling (FAO-56, registry)  ├─► Integration &
-Meteomatics Weather API ───────────────────────────────────► Economic, Fiscal & Actuarial ────┘   Decision Engine
-                                                                                                  (fail-closed)
-                                                                                                       │
-                                                                                          Web application (React + Leaflet)
-```
 
-| Module | Responsibility | Where |
-|---|---|---|
-| Data Processing & Spatial Analysis | validation, unit normalization, temporal alignment, spatial processing, H3 indexing, provenance & missing-status preservation | **this repository** |
-| Historical & Spatial Modeling | soil moisture, vegetation, thermal stress, bare-soil exposure, terrain hazards, PVRS, BF-EHSI | team main repo (inputs & indicator payloads supplied here) |
-| Crop Modeling | parameter registry (rice Inpari 32, soybean Anjasmoro, mungbean Vima-1, sorghum), FAO-56 water balance, suitability, calendar, strategic rotation (Pareto), tactical advisory | team main repo |
-| Economic, Fiscal & Actuarial | three-tier nitrogen accounting, subsidy scenarios, insurance risk, gross margins | team main repo |
-| External Weather Forecast | Meteomatics API → standardized ForecastBundle/ForecastDay | team main repo |
-| Integration & Decision Engine | completeness checks, fail-closed advisories, explainability, human verification | team main repo |
-| Web application | farmer & policymaker personas, Leaflet maps | team main repo |
+| Layer | Role |
+|---|---|
+| Data Processing & Spatial Analysis | Validates data, normalizes units, aligns timestamps, processes spatial boundaries, and indexes data with H3. |
+| Modeling Modules | Three modules: Historical & Spatial, Crop, and Economic/Fiscal/Actuarial. |
+| External Weather Forecast | Meteomatics forecasts consumed by Crop Modeling (Tactical Crop Advisory) and the Decision Engine. |
+| Integration & Decision Engine | Checks input sufficiency and combines module outputs into decision-support results. |
+| Web Application | Presents insights and recommendations to farmers and stakeholders. |
 
-## 3. What this repository delivers
+## Data Sources and Resources
 
-The data-processing workflow follows the team specification: acquire → check quality/availability → normalize units and names → align timestamps → process coordinates and boundaries → associate with H3 cells → preserve metadata, provenance, and missing-value status → emit standardized inputs.
+### NASA and Satellite Data
 
-Concretely:
-
-- **Daily per-cell tables** (2021-01-01 → 2026-11-14, 2,144 days) on Uber H3 resolution 9, joinable to forecast APIs on `date`.
-- **Three spatial grids** (pilot, paddy corridor, regency-clipped integration grid) with administrative labels.
-- **Environmental indicator payloads** per cell (`banyumas_h3_indicators_v3.geojson`) conforming to the team data contract: last-known indicators with explicit observation age, quality flags, erosion alerts, and governed `system_state`.
-- **Paddy ROI deliverables**: hex-union footprint and field-shaped paddy polygons, published as GEE assets and local GeoJSON.
-- **Dekad climatological baselines** and per-sensor caches for reproducible re-extraction.
-
-## 4. Study area & spatial grids
-
-Boundaries: HDX/BPS 2020 village polygons (332 desa, dissolved to 27 kecamatan) and FAO GAUL 2025 regency polygons.
-
-| Grid | Cells | Definition | Role |
-|---|---:|---|---|
-| `banyumas_h3_precomputed.geojson` | 1,000 | pilot grid, west-central Banyumas | first daily extraction (`out_daily/`) |
-| `banyumas_h3_paddy90.geojson` | 4,143 | ESA WorldCover v200 cropland fraction ≥ 0.9 | wider paddy-corridor comparison footprint (`out_daily_paddy/`) |
-| `banyumas_h3_paddy_kab.geojson` | **2,088** | cropland fraction ≥ 0.5 and centroid inside the regency polygon; 27/27 kecamatan | **integration grid** (`out_daily_kab/`) |
-
-The paddy90 grid captures the contiguous paddy corridor around Banyumas, extending into neighbouring regencies (Cilacap, Purbalingga, Kebumen, Banjarnegara, Brebes, Pangandaran); the regency-clipped grid aligns outputs with administrative boundaries. Per-kecamatan attribution: `analyze_paddy90_distribution.py`, `out_daily_paddy/paddy90_sebaran_kecamatan.png`.
-
-**H3 does not increase the native resolution of satellite data.** A coarse observation assigned to a finer H3 cell is never presented as a direct field-level measurement; native supports are declared per source (Section 5) and carried in metadata.
-
-## 5. Data sources
-
-| Variable | Product / GEE ID | Native support | Role |
+| # | Product | Main Variables | Application |
 |---|---|---|---|
-| Surface & root-zone soil moisture | `NASA/SMAP/SPL4SMGP/008` | 9 km, 3-hourly → daily mean | water-stress context (cloud-free L-band) |
-| Land surface temperature | `MODIS/061/MOD11A1` (+ `MYD11A1`), LST_Day_1km, QC ≤ 1 | 1 km, daily clear-sky mean | thermal condition & stress |
-| Precipitation | `NASA/GPM_L3/IMERG_V07` | 0.1°, half-hourly → daily mm + max mm/h | water inputs, rainfall hazard, p95 thresholds |
-| Reflectance / NDVI / MBSI | `NASA/HLS/HLSL30/v002` + `HLSS30/v002`, Fmask | 30 m, per-scene | vegetation & bare-soil indicators |
-| Elevation / slope | `USGS/SRTMGL1_003` | 30 m, static | terrain & erosion connectivity |
-| Agro-climatology | NASA POWER daily point | regional (~50 km) point | climate calculations, ETo inputs |
-| Cropland fraction | ESA WorldCover v200 (class 40) | 10 m | paddy grid definition & field-shaped ROI |
-| LST (optional enrichment) | ECOSTRESS `ECO_L2T_LSTE.002` via AppEEARS | 70 m, sparse ISS overpasses | pre-visual stress evidence where QC passes |
+| 1 | NASA SMAP L4 Soil Moisture (SPL4SMGP) | Surface and root-zone soil moisture | Soil moisture condition and water-stress context |
+| 2 | NASA MODIS Land Surface Temperature (MOD11A1) | Land Surface Temperature (LST) | Thermal condition and environmental stress analysis |
+| 3 | NASA GPM IMERG (V07) | Precipitation | Rainfall patterns, water inputs, rainfall-related hazards |
+| 4 | NASA HLS (Harmonized Landsat-Sentinel) | Surface reflectance, NIR, Red, SWIR | Vegetation and bare-soil indicators |
+| 5 | NASA SRTM (SRTMGL1) | Elevation | Terrain and slope analysis |
+| 6 | NASA POWER Agro-Climatology | Meteorological and agroclimatological variables | Agro-climate calculations, reference evapotranspiration inputs |
+| 7 | Google Earth Engine | Satellite data access and geospatial processing | Satellite data processing and geospatial analysis |
 
-Team-level resources outside this repository: **Meteomatics Weather API** (forecast input), **FAO-56** crop evapotranspiration framework, **Uber H3**, crop parameter registry with evidence status (reference values are distinguished from locally calibrated values), and **Leaflet** for the web application.
+### Space Agency Partner & Other Data
 
-## 6. Daily tables, provenance & missing-value status
+- **ESA WorldCover** (Land Cover, 10 m)
+- **Uber H3** Geospatial Indexing
+- **Meteomatics** Weather Forecast (NASA Space Apps Challenge partner)
 
-| Output | Cells | Rows | Train / val cells (spatial 70/30, seed 42) |
-|---|---:|---:|---|
-| `out_daily/` | 1,000 | 2,144,000 | 700 / 300 |
-| `out_daily_paddy/` | 4,143 | 8,882,592 | 2,900 / 1,243 |
-| `out_daily_kab/` (integration) | 2,088 | 4,476,672 | 1,462 / 626 |
+### External Weather Data
 
-Schema groups: raw sensor columns (`sm_rootzone`, `sm_surface`, `lst_modis_c`, `rain_mm`, `max_mmhr`, `ndvi`, `mbsi`, `n_obs`), terrain (`elev_m`, `slope_deg`), POWER climate, bounded forward fills (`*_ffill`, limit 15 d), gap-filled series (`ndvi_gapfill`, `lst_gapfill`) with estimation flags (`ndvi_interp`, `lst_interp`), per-sensor `quality_*` flags, and region labels (`kabupaten`, `kecamatan`, `zona`, `cropland_frac`).
+Forecasts come from the Meteomatics Weather API, a REST-style API for forecast, current, and historical data. Requests specify forecast time, weather parameters, geographic coordinates, and response format.
 
-Gap policy (integration grid, fraction of cell-days): raw LST missing 75.5% → `lst_gapfill` missing 25.0%; raw NDVI missing 89.3% → `ndvi_gapfill` missing 0.5%; soil moisture 0.2%; rain 0%. Gap-fill = linear interpolation between observations (LST ≤ 3 d, NDVI ≤ 30 d) plus bounded edge fill; every estimated value is flagged. Product-level gaps such as the SMAP outage (2022-08-06 → 2022-09-20) are preserved and flagged rather than silently smoothed. Each output ships a `daily_model_meta.json` documenting units, sources, gap fractions, and grid definition.
+### Agricultural and Scientific References
 
-## 7. Environmental indicators & team modeling spec
+- [Uber H3](https://h3geo.org/): hexagonal hierarchical geospatial indexing
+- [FAO-56 Crop Evapotranspiration](https://www.fao.org/4/x0490e/x0490e00.htm)
+- [Leaflet](https://leafletjs.com/): interactive maps library
 
-`grid_cell_contract.json` (v1.3) defines the per-cell exchange payload: `h3_index`, `physical_indicators`, `operational_flags` (`missing_observation`, `optical_lag_days`, `erosion_alert`, `data_quality_flags`, …), `rotation_scenarios`, `xai_decision_block` (evidence / expected benefits / information gaps / local risks), `fiscal_metrics`, and `system_state` ∈ {`ACTIVE_RECOMMENDATION`, `ABSTAIN_FIELD_AUDIT_REQUIRED`}.
+### Initial Crop Registry
 
-`make_indicators_v3_geojson.py` emits the integrated payload with **last-known-value semantics**: latest observation plus explicit age (`*_asof`, `optical_lag_days`, `lst_lag_days`), never silent nulls. Gate: HLS observation present, ≥1 scene, optical lag ≤ 30 d; missing flag when no HLS ever or no soil-moisture fill. At 2026-11-14 (paddy90 grid, monsoon season): **3,254 ACTIVE / 889 ABSTAIN**.
+| Crop | Variety | Notes |
+|---|---|---|
+| Rice | Inpari 32 | Released 2013; one of Indonesia's most popular varieties; high yield, resistant to bacterial leaf blight, cooks into soft, fluffy rice (*pulen*). |
+| Soybean | Anjasmoro | Released 2001; large yellow seeds ideal for tempeh and tofu; strong stems resist lodging in heavy rain or wind. |
+| Mungbean | Vima-1 | Fast-growing (harvest in under two months) with uniform ripening, avoiding repeated pod picking. |
+| Sorghum | n/a | n/a |
 
-These payloads supply the inputs and components of the team's Historical & Spatial Modeling formulations, which remain **project-specific and require baselines, calibration, and validation** before being treated as calibrated predictions:
+Crop information includes growth duration, crop coefficients, growth stages, water requirements, and other agronomic parameters where evidence is available. **Reference values are distinguished from locally calibrated values**: for example, a generic FAO rice crop coefficient is not automatically treated as a measured Inpari 32 coefficient for Banyumas.
 
-- **MBSI** = (SWIR1 − SWIR2 − NIR) / (SWIR1 + SWIR2 + NIR); bare-soil fraction `b_it = clip((MBSI + 0.15)/0.45, 0, 1)` — a project implementation assumption to be calibrated against reference observations.
-- **PVRS** = 1 / (1 + exp[−(S_physio − γ·S_visual)]) with S_physio from ESI, LST, and root-zone SM anomalies (w = 0.35/0.35/0.30, γ = 0.50) and S_visual from NDVI anomaly; detects pre-visual stress during optical lag. ESI input comes from ECOSTRESS where available.
-- **BF-EHSI** = b_it · [α·(LST/LST_crit) + β·tan(θ_SRTM)·(R_GPM,95th/R_norm)] with α = 0.40, β = 0.60, LST_crit = 42 °C, plus the cumulative degradation-risk integral D_i.
+## Data Processing and Spatial Framework
 
-This repository computes the environmental components (LST/SM/NDVI anomalies against dekad climatologies, MBSI, slope, rain-p95 exceedance, erosion alerts, observation-age flags); the composite scores and downstream rotation/fiscal logic belong to the team modeling modules.
+The system receives datasets with different spatial resolutions, temporal frequencies, coordinate systems, and units. The processing layer:
 
-## 8. Paddy ROI & GEE assets
+1. Acquires data from NASA products, external APIs, and agricultural references.
+2. Checks data quality and availability.
+3. Normalizes units and variable names.
+4. Aligns observation timestamps and forecast periods.
+5. Processes geographic coordinates and spatial boundaries.
+6. Associates data with the relevant H3 spatial cells.
+7. Preserves metadata, provenance, and missing-value status.
+8. Provides standardized inputs to the modeling modules.
 
-| Asset / file | Geometry | Area |
-|---|---|---:|
-| `projects/booming-voice-509501-c9/assets/banyumas_paddy90_roi` · `banyumas_paddy90_roi.geojson` | union of 4,143 hexes → 552 polygons | 420.7 km² |
-| `projects/booming-voice-509501-c9/assets/banyumas_sawah_poligon_roi` · `banyumas_sawah_poligon_roi.geojson` | field-shaped paddy polygons: WorldCover cropland vectorized at 10 m inside the footprint, 569 patches ≥ 0.1 ha | 412.8 km² |
+### H3 Spatial Indexing
 
-The field-shaped ROI follows real field boundaries instead of hexagon edges, delineated from versioned ESA WorldCover cropland — the same source that defines the paddy grid; fusion with official protected-paddy cadastre (LSD) is on the roadmap. `gee_roi_code_editor.js` is paste-ready Code Editor JavaScript displaying the ROI and printing a direct download link via `getDownloadURL` (no Google Drive quota needed). `paddy_roi_pipeline.py` runs the full chain (hex union → local GeoJSON → GEE asset → verify → optional public ACL → optional Drive export); `export_roi_to_drive.py` handles Drive-only exports with switchable project/account.
+H3 converts geographic locations into hexagonal cells, giving different spatial datasets a common identifier. It can organize soil moisture, vegetation, rainfall, terrain, crop suitability, and economic/agricultural attributes, and the specification considers multiple H3 resolutions for localized and regional analysis.
 
-## 9. Repository layout
+> H3 does **not** increase the original resolution of satellite data. A coarse satellite observation assigned to a finer H3 cell must not be presented as a direct field-level measurement.
 
-```
-├── build_daily_model_parquet.py      # daily ingestion pipeline (GEE, resumable, per-outdir caches)
-├── finalize_daily_kab.py             # region labels + split metadata for the integration grid
-├── gen_paddy_grid.py / gen_hex_grid.py / extract_paddy_fraction.py
-├── analyze_paddy90_distribution.py   # per-kecamatan / per-regency attribution
-├── make_indicators_v3_geojson.py     # contract v1.3 per-cell payload (last-known + age flags)
-├── make_daily_summary_geojson.py     # per-cell daily statistics GeoJSON
-├── make_paddy_polygon_roi.py         # field-shaped paddy polygons -> GEE asset + local GeoJSON
-├── paddy_roi_pipeline.py             # end-to-end hex-union ROI pipeline
-├── export_roi_to_drive.py            # Drive export (project/account switchable)
-├── gee_roi_code_editor.js            # paste-in Code Editor: map + no-Drive download link
-├── extract_ecostress_earthdata.py    # optional ECOSTRESS via AppEEARS (netrc auth, resumable)
-├── extract_*.py                      # per-sensor extractors (SMAP/GPM/HLS/LST/SRTM/POWER)
-├── gee_environment_init.py           # GEE auth/ROI helpers, dekad climatology baseline
-├── grid_cell_contract.json           # team data contract (v1.3)
-├── crop_rotation_matrix.json         # agronomic rotation reference matrix
-├── banyumas_h3_*.geojson             # grids (pilot / paddy corridor / integration)
-├── banyumas_*_roi.geojson            # ROI deliverables (hex union & field polygons)
-├── banyumas_h3_indicators_v3.geojson # integrated environmental indicator payload
-├── batas_kecamatan_banyumas/         # HDX/BPS 2020 village boundaries (332 desa)
-├── batas_kabupaten_gaul.geojson      # FAO GAUL 2025 regency boundaries
-└── out_daily/ out_daily_paddy/ out_daily_kab/   # metadata, per-kecamatan CSVs, figures, summaries
-```
+## Modeling Methodology
 
-In the public repository, `out_*/` ships metadata, per-kecamatan CSVs, figures and the daily-summary GeoJSON only; the full parquet tables and sensor caches stay local and are regenerated with the Quickstart pipeline. Archived earlier copies (`legacy/`, `clean_data_modules/`) are not published.
+CYBER-KATAM combines physical equations, agronomic rules, deterministic candidate generation, and multi-objective optimization. It is **not** a single machine-learning model that predicts every agricultural outcome.
 
-## 10. Quickstart
+### Historical & Spatial Modeling
 
-Requirements: Python ≥ 3.10 with `earthengine-api`, `pandas`, `geopandas`, `h3`, `shapely`, `pyproj`, `matplotlib`, `numpy`. A Google Earth Engine account/project; authenticate once (`python -c "import ee; ee.Authenticate()"`). ECOSTRESS additionally needs a NASA Earthdata login stored locally in `~/.netrc` (never committed).
+Analyzes environmental conditions and spatial differences: soil moisture assessment, vegetation condition, thermal stress, bare-soil exposure, terrain and slope, pre-visual root-stress assessment, and bare-field environmental hazard assessment.
 
-```bash
-# 1) daily table for the integration grid (resumable; caches per outdir)
-python build_daily_model_parquet.py --hex banyumas_h3_paddy_kab.geojson \
-       --outdir out_daily_kab --end 2026-11-14
+#### Pre-Visual Root-Stress Score (PVRS)
 
-# 2) attach kabupaten/kecamatan/zona labels + split metadata
-python finalize_daily_kab.py
+PVRS aims to identify possible physiological or root-zone water stress before visible vegetation deterioration. It combines the Evaporative Stress Index (ESI), Land Surface Temperature (LST), and root-zone soil moisture.
 
-# 3) per-cell indicator payload (contract v1.3) and daily-summary GeoJSON
-python make_indicators_v3_geojson.py --hex banyumas_h3_paddy90_kecamatan.geojson \
-       --outdir out_daily_paddy --out banyumas_h3_indicators_v3.geojson
-python make_daily_summary_geojson.py
+```text
+S_physio = w1 × ((μ_ESI − ESI) / σ_ESI)
+         + w2 × ((LST − μ_LST) / σ_LST)
+         + w3 × ((μ_SM − SM_root) / σ_SM)
 
-# 4) field-shaped paddy ROI -> GEE asset + local GeoJSON (no Drive required)
-python make_paddy_polygon_roi.py
+S_visual = (μ_NDVI − NDVI) / σ_NDVI
 
-# 5) full hex-union ROI pipeline (add --public / remove --skip-drive as needed)
-python paddy_roi_pipeline.py --skip-drive
-
-# 6) optional ECOSTRESS enrichment (AppEEARS point tasks, 500 points/task, resumable)
-python extract_ecostress_earthdata.py --hex banyumas_h3_paddy_kab.geojson
+PVRS = 1 / (1 + exp[−(S_physio − γ × S_visual)])
 ```
 
-Extraction is resumable: parts are keyed by month + slice-end + chunk, sensor caches are per-output-directory, and interrupted runs continue where they stopped. Train/validation splits are spatial (70/30, seed 42) with zero cell overlap.
+Where μ is a historical mean, σ a historical standard deviation, w1–w3 are component weights, and γ controls the vegetation contribution. Proposed values: `w1 = 0.35`, `w2 = 0.35`, `w3 = 0.30`, `γ = 0.50`.
 
-## 11. Limitations & future development
+The formulation is project-specific and requires suitable input data, historical baselines, and validation before being treated as a calibrated stress prediction.
 
-Consistent with the team specification, several boundaries must be addressed before CYBER-KATAM operates as a fully validated recommendation system:
+#### Modified Bare Soil Index (MBSI)
 
-- Satellite observations have different native resolutions and cannot automatically provide field-level measurements; spatial aggregation and downscaling require documented methods and validation.
-- Some crop parameters rely on general scientific references or proxies rather than local field experiments; local calibration is required before strong claims about crop performance in Banyumas.
-- Fiscal and actuarial calculations are scenario estimates until verified local prices, production costs, subsidy regulations, insurance rules, and historical claim data are available.
-- External weather forecasts are not equivalent to historical satellite observations; the two categories are handled separately and used for their appropriate purposes.
-- The Integration & Decision Engine generates recommendations only when required inputs are sufficiently complete and reliable (fail-closed); incomplete inputs yield conditional outputs or abstention with field-verification tickets.
+```text
+MBSI = (SWIR1 − SWIR2 − NIR) / (SWIR1 + SWIR2 + NIR)
+b_it = clip((MBSI + 0.15) / 0.45, 0, 1)
+```
 
-Future development focuses on verified data ingestion, local parameter calibration, field validation, economic/actuarial integration, complete API connectivity, and runtime integration of all modeling modules. Within this layer: PSF-based constrained inversion for within-support variability, per-cell climate downscaling, expanded ECOSTRESS campaigns, and cadastre (LSD) fusion for paddy delineation.
+`b_it` is the estimated bare-soil fraction. This transformation is a project-specific implementation assumption and must be calibrated against reference observations before being interpreted as a verified physical fraction.
 
-## 12. Team & links
+#### Bare-Field Environmental Hazard and Stress Index (BF-EHSI)
 
-- Team: [Satset Team wkwkwk — NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/find-a-team/1618-12112026-rifaldi-rpl-61-satset-team-wkwkwk/?tab=project)
-- Main team repository: [NASA-satset-team/cyber-katam](https://github.com/NASA-satset-team/cyber-katam)
-- Data portals: [NASA Earthdata](https://urs.earthdata.nasa.gov), [AppEEARS](https://appeears.earthdatacloud.nasa.gov), [GEE Data Catalog](https://developers.google.com/earth-engine/datasets/catalog), [FAO GAUL](https://data.apps.fao.org/catalog/), [HDX Indonesia boundaries](https://data.humdata.org/dataset/indonesia-administrative-level-0-1-2-3-and-4-boundary-polygons)
-- Boundary source repo: [JfrAziz/indonesia-district](https://github.com/JfrAziz/indonesia-district) (HDX/BPS 2020 villages)
-- Partner forecast resource: Meteomatics Weather API (NASA Space Apps Challenge partner)
+Assesses potential environmental hazards of exposed agricultural land, especially during fallow periods.
 
-**Acknowledgements.** NASA (SMAP, GPM IMERG, MODIS, HLS, ECOSTRESS, POWER, SRTM), ESA (WorldCover), FAO (GAUL, FAO-56), BPS/HDX (administrative boundaries), Meteomatics, and the Google Earth Engine platform.
+```text
+BF-EHSI = b_it × [ α × (LST_ECOSTRESS / LST_crit)
+                 + β × tan(θ_SRTM) × (R_GPM,95th / R_norm) ]
+```
+
+| Symbol | Meaning |
+|---|---|
+| `b_it` | Estimated bare-soil fraction |
+| `LST_ECOSTRESS` | Land surface temperature |
+| `LST_crit` | Critical temperature reference |
+| `θ_SRTM` | Terrain slope |
+| `R_GPM,95th` | 95th-percentile rainfall intensity |
+| `R_norm` | Rainfall normalization parameter |
+| `α`, `β` | Component weights |
+
+A cumulative degradation-risk formulation is also included:
+
+```text
+D_i = Σ [ b_it × k_i × c_it × e_it × Δt ]
+```
+
+with `k_i` soil erodibility, `c_it` surface connectivity, `e_it` rainfall erosivity, and `Δt` the time interval.
+
+### Crop Modeling
+
+Six components: **Crop Parameter Registry**, **Crop Water Modeling**, **Crop Suitability**, **Crop Calendar**, **Strategic Crop Rotation Modeling**, and **Tactical Crop Advisory**.
+
+#### Crop Parameter Registry
+
+Stores crop characteristics and supporting references. Each parameter includes crop/variety identifier, value, unit, source, evidence status, and validation information. The registry distinguishes **observed values, reference values, proxies, derived values, and missing information**, so unsupported parameters are never silently replaced with arbitrary defaults.
+
+#### Crop Water Modeling
+
+Follows the FAO-56 crop coefficient approach:
+
+```text
+ETc = Kc × ETo
+
+ETo = [0.408Δ(Rn − G) + γ(900 / (T + 273)) u2 (es − ea)]
+      / [Δ + γ(1 + 0.34 u2)]
+
+S_t = S_(t−1) + P_eff,t + I_t − ETc_t − RO_t − DP_t
+```
+
+| Symbol | Meaning |
+|---|---|
+| `ETc` / `ETo` | Crop / reference evapotranspiration |
+| `Kc` | Stage-specific crop coefficient |
+| `Rn`, `G` | Net radiation, soil heat flux |
+| `T`, `u2` | Mean air temperature, wind speed at 2 m |
+| `es − ea` | Vapor pressure deficit |
+| `Δ`, `γ` | Slope of saturation vapor pressure curve, psychrometric constant |
+| `S_t` | Soil water storage |
+| `P_eff`, `I`, `RO`, `DP` | Effective rainfall, irrigation, runoff, deep percolation |
+
+Short-term forecasts use **sequential forward water-balance** calculations: H+1 uses the initial storage, H+2 uses the resulting H+1 storage, and H+3 uses the H+2 storage. The model distinguishes seasonal crop evapotranspiration from actual irrigation demand.
+
+#### Crop Calendar
+
+Uses crop duration and growth-stage information to support planting-window evaluation, growth-stage tracking, harvest timing estimates, feasibility checks between consecutive seasons, and crop sequence scheduling. Accuracy depends on validated duration and growth-stage parameters.
+
+#### Strategic Crop Rotation Modeling
+
+A deterministic candidate generator creates crop sequences from the registry and checks crop existence and duration, suitability, calendar feasibility, water-related information, other agronomic constraints, and completeness of optimization metrics. Candidates are compared with **multi-objective Pareto analysis**:
+
+```text
+Maximize f(x) = [ N_displaced(x), ΔSOC(x), −BPH_burden(x) ]
+```
+
+- `N_displaced`: potential chemical nitrogen fertilizer displacement
+- `ΔSOC`: change in soil organic carbon
+- `BPH_burden`: brown planthopper burden
+
+Constraints cover farmer subsistence income, soil water availability, saturated hydraulic conductivity, and soil erosion tolerance. An epsilon-constraint formulation is also supported:
+
+```text
+Maximize N_displaced(x)
+subject to  ΔSOC(x) ≥ ε1,  BPH_burden(x) ≤ ε2
+```
+
+Candidates with incomplete required metrics are **not** assigned fabricated values and are not included in the final Pareto ranking.
+
+#### Tactical Crop Advisory
+
+Short-term operational advisories using forecast data and environmental information, across: **planting, irrigation, fertilization, drainage, harvest, and fallow management**.
+
+- **Irrigation:** sequential water-balance calculations with forecast information.
+- **Fertilization:** requires an explicit nitrogen requirement; biological nitrogen fixation is not automatically subtracted from fertilizer demand.
+- **Drainage:** evaluates soil moisture and saturation; rainfall alone is insufficient to establish a drainage need.
+- **Planting / harvest:** considers crop duration and planting dates when available.
+- **Fallow management:** consumes a BF-EHSI value supplied by the spatial module rather than recalculating it.
+
+The advisor **abstains** when essential inputs are missing.
+
+### Economic, Fiscal & Actuarial Modeling
+
+Evaluates potential financial and policy implications: nitrogen accounting, fiscal subsidy scenarios, agricultural insurance risk, and economic feasibility.
+
+#### A. Three-Tier Nitrogen Accounting
+
+```text
+Tier 1:  N_bio      = Biomass × Tissue_N × Ndfa
+Tier 2:  N_retained = N_bio × (1 − f_harvest) × (1 − f_denit − f_leach) × f_mineralization
+Tier 3:  ΔN_chem    = min( N_retained / (0.46 × NUE), Urea_recommended )
+```
+
+`0.46` is the nominal nitrogen fraction of urea; `NUE` is nitrogen-use efficiency. Retained nitrogen does not automatically equal actual fertilizer savings, since residue decomposition, soil nitrogen, mineralization timing, immobilization, crop uptake, and field-specific response must be considered.
+
+#### B. Fiscal Subsidy Clearing
+
+```text
+S_net = Σ [ A_k × a_k × ΔN_chem,k × s_N ] − (C_extension + C_transition + C_verification)
+```
+
+`A_k` agricultural area, `a_k` adoption ratio, `ΔN_chem,k` potential fertilizer displacement, `s_N` assumed subsidy difference per kg, and `C_*` extension, transition, and verification costs. This estimates potential fiscal implications under adoption scenarios; it is **not** a measurement of realized government budget savings.
+
+#### C. Agricultural Insurance Risk Assessment
+
+Examines how management strategies (water management, rotation, pest exposure) may influence crop failure risk, including AUTP-related risks. A valid actuarial assessment requires historical claim frequency and severity, insured area, sum insured, coverage and eligibility rules, and historical loss and payment information. Without these, percentage reductions from assumed coefficients are **scenario estimates**, not validated predictions.
+
+#### D. Economic Feasibility
+
+```text
+Gross Margin = Revenue − Production Cost
+Revenue      = Yield × Selling Price
+```
+
+Analysis must use crop-specific, regionally relevant values. Historical or assumed prices must not be presented as current market prices.
+
+#### E. Optimization Integration
+
+Economic and actuarial outputs supply additional metrics for comparing rotation scenarios. To avoid duplicate logic, the system uses **one canonical Pareto optimization workflow**.
+
+## External Weather Forecast Integration
+
+CYBER-KATAM uses the Meteomatics Weather API as an external forecast source. The team does **not** develop an independent forecasting model.
+
+Integration workflow:
+
+1. Request forecast information for the required location and period.
+2. Retrieve the selected weather parameters.
+3. Parse and validate the API response.
+4. Convert it into the standardized `ForecastBundle` and `ForecastDay` structures.
+5. Pass it to Crop Modeling and the Integration & Decision Engine.
+6. Use it for short-term agricultural advisory calculations.
+
+The API provides meteorological data; the agricultural interpretation and recommendation logic are handled by CYBER-KATAM.
+
+## Integration & Decision Engine
+
+Combines historical environmental indicators, spatial and terrain information, crop suitability and water-balance outputs, rotation candidates, economic and fiscal metrics, and weather forecasts. It evaluates completeness and compatibility of inputs before generating results, and distinguishes **validated recommendations**, **conditional recommendations**, and **insufficient-data cases**.
+
+The project follows a **fail-closed** approach:
+
+- Complete and sufficiently validated inputs may support an advisory.
+- Incomplete inputs result in conditional outputs or abstention.
+- Assumptions and proxies are explicitly identified.
+- Field verification is required when important conditions cannot be established remotely.
+
+## Explainability and Human Verification
+
+A decision-support result can include:
+
+- **Evidence:** environmental and agronomic indicators supporting the result.
+- **Expected Benefits:** potential water, soil, crop, or economic benefits.
+- **Information Gaps:** missing or uncertain parameters affecting confidence.
+- **Local Risks:** conditions requiring field inspection or additional verification.
+
+Human-in-the-loop verification involves farmers, farmer groups, and agricultural extension officers, which is especially important for field-level information satellites cannot reliably establish, such as soil pH, drainage capacity, salinity, and actual irrigation conditions.
+
+## Innovation and Creativity
+
+- Combines satellite-derived environmental indicators with crop-specific agronomic requirements.
+- Uses H3 spatial indexing to connect data from different geographic sources.
+- Treats crop rotation as a multi-objective decision across soil, nutrient, pest, and economic trade-offs.
+- Connects external weather forecasts with sequential crop water-balance calculations.
+- Considers fiscal and agricultural insurance implications alongside agronomic decisions.
+- Builds missing-data handling, evidence status, and human verification into the workflow.
+- Modular architecture lets components be improved without redesigning the whole system.
+
+## Intended Impact
+
+- **Farmers:** evaluate crop choices, water requirements, planting schedules, and rotation alternatives.
+- **Extension officers:** structured overview of environmental indicators, risks, and conditions needing field verification.
+- **Policymakers and stakeholders:** evaluate resource efficiency, fertilizer subsidy implications, and agricultural risk management.
+
+Long-term goals: better-informed crop planning, improved awareness of water constraints, systematic evaluation of rotation alternatives, greater consideration of soil and environmental risks, more transparent economic and fiscal trade-off assessment, better communication among farmers, extension officers, and policymakers, and support for sustainable, resilient agriculture.
+
+## Limitations and Future Development
+
+- Satellite observations have varying resolutions and cannot automatically provide field-level measurements; downscaling requires documented methods and validation.
+- Some crop parameters come from general references or proxies; local calibration is needed before strong claims about crop performance in Banyumas.
+- Fiscal and actuarial calculations require verified local prices, production costs, subsidy regulations, insurance rules, and historical claim data.
+- Weather forecasts are not equivalent to historical satellite observations and must be handled separately.
+- The Decision Engine must only generate recommendations when required inputs are sufficiently complete and reliable.
+
+**Future work:** verified data ingestion, local parameter calibration, field validation, economic and actuarial integration, complete API connectivity, and runtime integration of all modeling modules.
+
+## Tech Stack
+
+- **Python** and scientific computing libraries: data processing, numerical calculations, geospatial analysis, and crop, environmental, and economic models.
+- **React / JavaScript:** web application interface.
+- **Leaflet:** interactive map visualization.
+- **Uber H3:** hexagonal spatial indexing.
+- **JSON / GeoJSON:** model inputs and outputs, configuration, parameters, and geospatial features.
+- **Google Earth Engine:** satellite data access and processing.
+- **Meteomatics Weather API:** external weather forecasts.
+
+## Acknowledgements
+
+Built for the **NASA Space Apps Challenge**. Data and resources: NASA SMAP, MODIS, GPM IMERG, HLS, SRTM, NASA POWER, Google Earth Engine, ESA WorldCover, Uber H3, FAO-56, and Meteomatics (NASA Space Apps Challenge partner).
+
+Repository: <https://github.com/NASA-satset-team/cyber-katam>

@@ -1,6 +1,7 @@
 """
 Build demo-grid-levels.json from banyumas_h3_indicators_v2.geojson.
-100% dari 1.000 sel H3-9 memiliki koordinat poligon batas lahan dan indikator satelit NASA nyata.
+Sel H3-9 hasil polyfill mask sawah Sentinel-2, masing-masing dengan
+indikator satelit NASA dan provenance per sel (OBSERVED/NEAREST_NEIGHBOR).
 """
 import json
 from pathlib import Path
@@ -36,6 +37,8 @@ for feat in source["features"]:
         "lst_anomaly":    phys.get("lst_anomaly"),
         "erosion_alert":  flags.get("erosion_alert", False),
         "paddy_gate_passed": flags.get("paddy_gate_passed", False),
+        "indicator_provenance": flags.get("indicator_provenance"),
+        "indicator_source_h3": flags.get("indicator_source_h3"),
         "system_state":   sys_state,
         "dekad_year":     meta.get("current_dekad_year"),
         "dekad":          meta.get("current_dekad"),
@@ -61,11 +64,12 @@ artifact = {
     "contract_version": "grid_cell_contract_v1.2",
     "warning": (
         "Indikator satelit asli: NASA GPM IMERG v7, SMAP SPL4SMGP v8, "
-        "HLS v2.0, MODIS LST, SRTM. 1.000 sel resolusi 9 100% terhubung ke indikator nyata."
+        "HLS v2.0, MODIS LST, SRTM. Sel resolusi 9 terhubung ke indikator "
+        "dengan provenance per sel (OBSERVED / NEAREST_NEIGHBOR)."
     ),
     "levels": new_levels,
 }
 
 levels_path.write_text(json.dumps(artifact, separators=(",", ":")) + "\n", encoding="utf-8")
-print(f"Berhasil! 1000 dari 1000 sel H3-9 memiliki geometri dan indikator NASA lengkap.")
+print(f"Berhasil! {len(res9_cells)} sel H3-9 memiliki geometri dan indikator NASA lengkap.")
 print(f"Ukuran file: {levels_path.stat().st_size / 1024:.1f} KB")

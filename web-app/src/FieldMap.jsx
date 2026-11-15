@@ -42,6 +42,7 @@ export default function FieldMap({
 }) {
   const conditionLabels = conditionLabelsByLang[lang] || conditionLabelsByLang.id;
   const en = lang === 'en';
+  const cellProvenance = selectedCell?.indicators?.indicator_provenance;
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const geojsonLayerRef = useRef(null);
@@ -129,7 +130,7 @@ export default function FieldMap({
   // Fetch data grid sintetis H3
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/demo-grid-levels.json', { signal: controller.signal })
+    fetch('/demo-grid-levels.json?v=' + Date.now(), { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -308,7 +309,7 @@ export default function FieldMap({
       {selectedCell && (
         <div className="cell-detail" style={{ zIndex: 1000 }}>
           <div>
-            <span className="micro-label">{en ? `CELL DETAILS · ${selectedCell.indicators ? 'REAL NASA DATA' : 'SIMULATION DATA'}` : `RINCIAN SEL · ${selectedCell.indicators ? 'DATA NASA RIIL' : 'DATA SIMULASI'}`}</span>
+            <span className="micro-label">{en ? `CELL DETAILS · ${selectedCell.indicators ? (cellProvenance === 'NEAREST_NEIGHBOR' ? 'NASA DATA · SPATIAL INTERPOLATION' : 'REAL NASA DATA') : 'SIMULATION DATA'}` : `RINCIAN SEL · ${selectedCell.indicators ? (cellProvenance === 'NEAREST_NEIGHBOR' ? 'DATA NASA · INTERPOLASI SPASIAL' : 'DATA NASA RIIL') : 'DATA SIMULASI'}`}</span>
             <button aria-label={en ? 'Close cell details' : 'Tutup rincian sel'} onClick={() => onCell(null)}>
               <X size={16} />
             </button>
@@ -328,8 +329,8 @@ export default function FieldMap({
                         ? `✅ Verified Paddy (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
                         : `✅ Terverifikasi Sawah (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
                       : en
-                      ? '🏙️ Non-Paddy / Settlement (Sentinel-2)'
-                      : '🏙️ Non-Sawah / Pemukiman (Sentinel-2)'
+                      ? `🏙️ Non-Paddy / Settlement (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
+                      : `🏙️ Non-Sawah / Pemukiman (${(selectedCell.indicators.paddy_fraction * 100).toFixed(1)}% Sentinel-2)`
                     : selectedCell.indicators.paddy_gate_passed
                     ? en
                       ? '✅ Verified Paddy'
@@ -337,6 +338,18 @@ export default function FieldMap({
                     : en
                     ? '⚠ Unverified'
                     : '⚠ Belum Terverifikasi'}
+                </dd>
+              </div>
+              <div>
+                <dt>{en ? 'Indicator Provenance' : 'Provenance Indikator'}</dt>
+                <dd>
+                  {selectedCell.indicators.indicator_provenance === 'NEAREST_NEIGHBOR'
+                    ? en
+                      ? 'Nearest-neighbor estimate from observed cell'
+                      : 'Estimasi tetangga terdekat dari sel terobservasi'
+                    : en
+                      ? 'NASA observation of this cell'
+                      : 'Observasi NASA sel ini'}
                 </dd>
               </div>
               <div>
@@ -354,21 +367,57 @@ export default function FieldMap({
                 <dd>{formatIndicator('ndvi', selectedCell.indicators.ndvi)}</dd>
               </div>
               <div>
-                <dt>{en ? 'Soil Moisture (SMAP ~9km)' : 'Kelembapan Tanah (SMAP ~9km)'}</dt>
+                <dt>{en ? 'Rootzone Moisture (SMAP)' : 'Kelembapan Zona Akar (SMAP)'}</dt>
                 <dd>{formatIndicator('smap_wetness', selectedCell.indicators.smap_wetness)}</dd>
               </div>
+              {selectedCell.indicators.smap_surface != null && (
+                <div>
+                  <dt>{en ? 'Surface Moisture (SMAP)' : 'Kelembapan Permukaan (SMAP)'}</dt>
+                  <dd>{(selectedCell.indicators.smap_surface * 100).toFixed(1)}% vol.</dd>
+                </div>
+              )}
               <div>
                 <dt>{en ? 'Dekad Rainfall (GPM 0.1°)' : 'Curah Hujan Dekad (GPM 0,1°)'}</dt>
                 <dd>{formatIndicator('gpm_rain_dekad', selectedCell.indicators.gpm_rain_dekad)}</dd>
               </div>
+              {selectedCell.indicators.gpm_max_mmhr != null && (
+                <div>
+                  <dt>{en ? 'Peak Rainfall Rate (GPM)' : 'Intensitas Puncak (GPM)'}</dt>
+                  <dd>{selectedCell.indicators.gpm_max_mmhr} mm/jam</dd>
+                </div>
+              )}
               <div>
                 <dt>{en ? 'Slope (SRTM 30m)' : 'Kemiringan Lereng (SRTM 30m)'}</dt>
                 <dd>{formatIndicator('srtm_slope', selectedCell.indicators.srtm_slope)}</dd>
               </div>
+              {selectedCell.indicators.srtm_elev_m != null && (
+                <div>
+                  <dt>{en ? 'Elevation (SRTM 30m)' : 'Elevasi (SRTM 30m)'}</dt>
+                  <dd>{selectedCell.indicators.srtm_elev_m} m dpl</dd>
+                </div>
+              )}
               <div>
                 <dt>{en ? 'Temp. Anomaly (MODIS LST)' : 'Anomali Suhu (MODIS LST)'}</dt>
                 <dd>{formatIndicator('lst_anomaly', selectedCell.indicators.lst_anomaly)}</dd>
               </div>
+              {selectedCell.indicators.power_t2m != null && (
+                <div>
+                  <dt>{en ? 'Air Temp (NASA POWER)' : 'Suhu Udara (NASA POWER)'}</dt>
+                  <dd>{selectedCell.indicators.power_t2m} °C</dd>
+                </div>
+              )}
+              {selectedCell.indicators.power_rh2m != null && (
+                <div>
+                  <dt>{en ? 'Humidity (NASA POWER)' : 'Kelembapan (NASA POWER)'}</dt>
+                  <dd>{selectedCell.indicators.power_rh2m} %</dd>
+                </div>
+              )}
+              {selectedCell.indicators.power_vpd != null && (
+                <div>
+                  <dt>{en ? 'Vapor Pressure Deficit' : 'Defisit Uap Air (VPD)'}</dt>
+                  <dd>{selectedCell.indicators.power_vpd} kPa</dd>
+                </div>
+              )}
               <div>
                 <dt>{en ? 'Erosion Alert' : 'Peringatan Erosi'}</dt>
                 <dd className={selectedCell.indicators.erosion_alert ? 'orange-text' : ''}>

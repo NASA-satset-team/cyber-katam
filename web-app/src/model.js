@@ -89,27 +89,6 @@ export function cellCondition(cell, activeLayers, result) {
   // Jika sel memiliki indikator nyata, gunakan indikator tersebut
   const ind = cell?.indicators;
   if (ind) {
-    if (activeLayers.includes('smap')) {
-      if (ind.smap_wetness !== null && ind.smap_wetness !== undefined) {
-        if (ind.smap_wetness < 0.2) return 'stress';     // sangat kering
-        if (ind.smap_wetness > 0.5) return 'erosion';    // terlalu basah/risiko genangan
-        return 'safe';
-      }
-    }
-    if (activeLayers.includes('hls')) {
-      if (ind.ndvi !== null && ind.ndvi !== undefined) {
-        if (ind.ndvi < 0.3) return 'stress';    // vegetasi sangat jarang
-        if (ind.ndvi > 0.5) return 'safe';      // vegetasi lebat/sehat
-        return 'erosion';                        // vegetasi sedang
-      }
-    }
-    if (activeLayers.includes('gpm')) {
-      if (ind.gpm_rain_dekad !== null && ind.gpm_rain_dekad !== undefined) {
-        if (ind.gpm_rain_dekad > 100) return 'erosion';  // curah hujan sangat tinggi
-        if (ind.gpm_rain_dekad < 10)  return 'stress';   // sangat kering
-        return 'safe';
-      }
-    }
     if (activeLayers.includes('eco')) {
       if (ind.pvrs !== null && ind.pvrs !== undefined) {
         if (ind.pvrs >= 0.70) return 'stress';
@@ -117,19 +96,41 @@ export function cellCondition(cell, activeLayers, result) {
         return 'safe';
       }
       if (ind.lst_anomaly !== null && ind.lst_anomaly !== undefined) {
-        if (ind.lst_anomaly > 1.5) return 'stress';    // suhu jauh di atas normal
-        if (ind.lst_anomaly < -1)  return 'safe';      // suhu di bawah normal (baik)
-        return 'erosion';                              // anomali sedang
+        if (ind.lst_anomaly > 1.5) return 'stress';
+        if (ind.lst_anomaly < -1)  return 'safe';
+        return 'erosion';
+      }
+    }
+    if (activeLayers.includes('smap')) {
+      if (ind.smap_wetness !== null && ind.smap_wetness !== undefined) {
+        if (ind.smap_wetness < 0.2) return 'stress';
+        if (ind.smap_wetness > 0.45) return 'erosion';
+        if (activeLayers.length === 1) return 'safe';
+      }
+    }
+    if (activeLayers.includes('gpm')) {
+      if (ind.gpm_rain_dekad !== null && ind.gpm_rain_dekad !== undefined) {
+        if (ind.gpm_rain_dekad > 150) return 'erosion';
+        if (ind.gpm_rain_dekad < 20)  return 'stress';
+        if (activeLayers.length === 1) return 'safe';
+      }
+    }
+    if (activeLayers.includes('hls')) {
+      if (ind.ndvi !== null && ind.ndvi !== undefined) {
+        if (ind.ndvi < 0.3) return 'stress';
+        if (ind.ndvi > 0.5) return 'safe';
+        return 'erosion';
       }
     }
     if (activeLayers.includes('srtm')) {
       if (ind.srtm_slope !== null && ind.srtm_slope !== undefined) {
-        if (ind.srtm_slope > 15) return 'erosion';   // lereng curam, risiko erosi
-        if (ind.srtm_slope > 8)  return 'stress';    // lereng sedang
-        return 'safe';                               // lereng landai, aman
+        if (ind.srtm_slope > 15) return 'erosion';
+        if (ind.srtm_slope > 8)  return 'stress';
+        return 'safe';
       }
     }
     if (ind.erosion_alert) return 'erosion';
+    return 'safe';
   }
   // Fallback ke simulasi (untuk sel tanpa indikator nyata atau resolusi 7/8)
   if (!activeLayers.length) return 'unknown';

@@ -7,8 +7,11 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  Calendar,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleHelp,
   ClipboardCheck,
   CloudRain,
@@ -57,6 +60,35 @@ import './styles.css';
 const LazyMap = React.lazy(() => import('./FieldMap'));
 const initialGates = ['belum', 'belum', 'belum', 'belum'];
 const layerIcons = [Droplets, Sun, Leaf, CloudRain, Globe2];
+const MIN_HISTORY_DATE = new Date(2021, 0, 1);
+
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addDays(date, days) {
+  const d = startOfDay(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function isSameDay(a, b) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function formatDailyDate(date, lang = 'id') {
+  return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
 
 function Modal({ title, onClose, closeLabel = 'Tutup dialog', children, className = '' }) {
   const ref = useRef(null);
@@ -104,12 +136,98 @@ function DemoBadge({ children, subtle = false, lang = 'id' }) {
   );
 }
 
+function parseRoute(pathname) {
+  const clean = (pathname || '/').replace(/\/+$/, '') || '/';
+  const segments = clean.split('/').filter(Boolean);
+  const defaultMode = window.matchMedia('(max-width: 700px)').matches ? 'farmer' : 'analyst';
+
+  let lang = 'id';
+  let theme = 'light';
+  let mode = defaultMode;
+  let view = 'dashboard';
+  let modal = null;
+
+  for (const seg of segments) {
+    if (seg === 'en') lang = 'en';
+    if (seg === 'id') lang = 'id';
+    if (seg === 'dark' || seg === 'gelap') theme = 'dark';
+    if (seg === 'light' || seg === 'terang') theme = 'light';
+    if (seg === 'petani' || seg === 'farmer') mode = 'farmer';
+    if (seg === 'pembuat-kebijakan' || seg === 'policymaker') mode = 'analyst';
+  }
+
+  if (clean.endsWith('/audit/bagikan') || clean.endsWith('/audit/share')) {
+    view = 'audit';
+    modal = 'share';
+  } else if (clean.endsWith('/audit')) {
+    view = 'audit';
+  } else if (clean.endsWith('/data-nasa') || clean.endsWith('/nasa-data') || clean.endsWith('/nasa')) {
+    mode = 'analyst';
+    view = 'nasa';
+  } else if (clean.endsWith('/simulasi') || clean.endsWith('/simulation')) {
+    mode = 'analyst';
+    view = 'simulasi';
+  } else if (clean.endsWith('/pareto')) {
+    mode = 'analyst';
+    view = 'pareto';
+  } else if (clean.endsWith('/diagnostik') || clean.endsWith('/diagnostics')) {
+    mode = 'analyst';
+    view = 'diagnostik';
+  } else if (clean.endsWith('/strategi') || clean.endsWith('/strategy')) {
+    mode = 'analyst';
+    view = 'strategi';
+  } else if (clean.endsWith('/satelit') || clean.endsWith('/satellite')) {
+    mode = 'analyst';
+    modal = 'sources';
+  } else if (clean.endsWith('/periode') || clean.endsWith('/period')) {
+    mode = 'farmer';
+    modal = 'period';
+  } else if (clean.endsWith('/panduan') || clean.endsWith('/guide')) {
+    modal = 'help';
+  } else if (clean.endsWith('/bagikan') || clean.endsWith('/share')) {
+    modal = 'share';
+  }
+
+  return { lang, theme, mode, view, modal };
+}
+
+function buildRoutePath(mode, view, modal, lang = 'id', theme = 'light') {
+  const en = lang === 'en';
+  const themeSeg = theme === 'dark' ? (en ? 'dark' : 'gelap') : en ? 'light' : 'terang';
+  const modeSeg = mode === 'farmer' ? (en ? 'farmer' : 'petani') : en ? 'policymaker' : 'pembuat-kebijakan';
+  const base = `/${lang}/${themeSeg}/${modeSeg}`;
+
+  if (modal === 'sources') return `${base}/${en ? 'satellite' : 'satelit'}`;
+  if (modal === 'help') return `${base}/${en ? 'guide' : 'panduan'}`;
+  if (modal === 'period') return `${base}/${en ? 'period' : 'periode'}`;
+  if (modal === 'share') {
+    const shareSeg = en ? 'share' : 'bagikan';
+    return view === 'audit' ? `${base}/audit/${shareSeg}` : `${base}/${shareSeg}`;
+  }
+  if (view === 'audit') return `${base}/audit`;
+  if (view === 'nasa') return `${base}/${en ? 'nasa-data' : 'data-nasa'}`;
+  if (view === 'simulasi') return `${base}/${en ? 'simulation' : 'simulasi'}`;
+  if (view === 'pareto') return `${base}/pareto`;
+  if (view === 'diagnostik') return `${base}/${en ? 'diagnostics' : 'diagnostik'}`;
+  if (view === 'strategi') return `${base}/${en ? 'strategy' : 'strategi'}`;
+  return base;
+}
+
 function App() {
-  const [mode, setMode] = useState(() => (window.matchMedia('(max-width: 700px)').matches ? 'farmer' : 'analyst'));
-  const [view, setView] = useState('dashboard');
-  const [lang, setLang] = useState('id');
-  const [theme, setTheme] = useState('light');
-  const [period, setPeriod] = useState(periodOptionsByLang.id[0]);
+  const initialRoute = parseRoute(window.location.pathname);
+  const [today] = useState(() => startOfDay(new Date()));
+  const maxDate = addDays(today, 3);
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [backClicks, setBackClicks] = useState(0);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calViewYear, setCalViewYear] = useState(() => new Date().getFullYear());
+  const [calViewMonth, setCalViewMonth] = useState(() => new Date().getMonth());
+  const periodWrapRef = useRef(null);
+
+  const [mode, setMode] = useState(initialRoute.mode);
+  const [view, setView] = useState(initialRoute.view);
+  const [lang, setLang] = useState(initialRoute.lang);
+  const [theme, setTheme] = useState(initialRoute.theme);
   const [activeLayers, setActiveLayers] = useState(['smap', 'eco', 'hls', 'gpm']);
   const [resolution, setResolution] = useState(8);
   const [showGrid, setShowGrid] = useState(true);
@@ -120,14 +238,14 @@ function App() {
   const [result, setResult] = useState(() => simulate());
   const [hasRun, setHasRun] = useState(false);
   const [diagnostics] = useState(true);
-  const [layersOpen, setLayersOpen] = useState(true);
+  const [layersOpen, setLayersOpen] = useState(false);
   const [gates, setGates] = useState(initialGates);
   const [activeGate, setActiveGate] = useState(0);
   const [role, setRole] = useState('Analis');
   const [signature, setSignature] = useState('');
   const [signedBy, setSignedBy] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
-  const [modal, setModal] = useState(null);
+  const [modal, setModal] = useState(initialRoute.modal);
   const [share, setShare] = useState(null);
   const [shareFeedback, setShareFeedback] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -135,6 +253,9 @@ function App() {
   const [term, setTerm] = useState(null);
 
   const en = lang === 'en';
+  const period = formatDailyDate(selectedDate, lang);
+  const canGoPrev = selectedDate > MIN_HISTORY_DATE;
+  const canGoNext = selectedDate < maxDate;
   const periodOptions = periodOptionsByLang[lang];
   const strategies = getStrategies(lang);
   const layers = getLayers(lang);
@@ -144,7 +265,8 @@ function App() {
   const shareRef = useRef(null);
   const strategy = strategies.find((item) => item.id === selectedStrategy);
   const decision = getDecisionState(gates, lang);
-  const analystDashboard = mode === 'analyst' && view === 'dashboard';
+  const analystDashboard =
+    mode === 'analyst' && ['dashboard', 'nasa', 'simulasi', 'pareto', 'diagnostik', 'strategi'].includes(view);
   const dirty = result.rain !== rain || result.temperature !== temperature;
   const localizedSummary = getSimulationSummary(result.rain, result.temperature, lang, result.summary);
 
@@ -164,20 +286,58 @@ function App() {
   }, [toast]);
 
   useEffect(() => {
+    const targetPath = buildRoutePath(mode, view, modal, lang, theme);
+    if (window.location.pathname !== targetPath) {
+      if (window.location.pathname === '/') {
+        window.history.replaceState({}, '', targetPath);
+      } else {
+        window.history.pushState({}, '', targetPath);
+      }
+    }
+  }, [mode, view, modal, lang, theme]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const parsed = parseRoute(window.location.pathname);
+      setLang(parsed.lang);
+      setTheme(parsed.theme);
+      setMode(parsed.mode);
+      setView(parsed.view);
+      setModal(parsed.modal);
+      setTerm(null);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (shareRef.current) URL.revokeObjectURL(shareRef.current);
     };
   }, []);
 
+  useEffect(() => {
+    if (!calendarOpen) return;
+    const onPointerDown = (e) => {
+      if (periodWrapRef.current && !periodWrapRef.current.contains(e.target)) {
+        setCalendarOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [calendarOpen]);
+
   function changeMode(next) {
     setMode(next);
     setView('dashboard');
+    setModal(null);
     setTerm(null);
     window.scrollTo(0, 0);
   }
 
   function openAudit() {
     setView('audit');
+    setModal(null);
     setTerm(null);
     window.scrollTo(0, 0);
   }
@@ -197,17 +357,44 @@ function App() {
     );
   }
 
-  function changePeriod(next) {
-    setPeriod(next);
+  function applyDateChange(nextDate) {
+    const cleanDate = startOfDay(nextDate);
+    setSelectedDate(cleanDate);
     setGates(initialGates);
     setSignedBy('');
     setSignature('');
     setActiveGate(0);
-    setToast(
-      en
-        ? 'Sample period updated. No real observations were fetched.'
-        : 'Periode contoh diubah. Tidak ada observasi nyata yang diambil.'
-    );
+  }
+
+  function handlePrevDay() {
+    if (selectedDate <= MIN_HISTORY_DATE) return;
+    const nextDate = addDays(selectedDate, -1);
+    applyDateChange(nextDate);
+    setCalViewYear(nextDate.getFullYear());
+    setCalViewMonth(nextDate.getMonth());
+    const nextClicks = backClicks + 1;
+    setBackClicks(nextClicks);
+    if (nextClicks > 5) {
+      setCalendarOpen(true);
+    }
+  }
+
+  function handleNextDay() {
+    if (selectedDate >= maxDate) return;
+    const nextDate = addDays(selectedDate, 1);
+    applyDateChange(nextDate);
+    setBackClicks(0);
+    setCalendarOpen(false);
+  }
+
+  function handleSelectCalendarDate(dayDate) {
+    const clean = startOfDay(dayDate);
+    if (clean < MIN_HISTORY_DATE || clean > today) return;
+    applyDateChange(clean);
+    setCalViewYear(clean.getFullYear());
+    setCalViewMonth(clean.getMonth());
+    setBackClicks(0);
+    setCalendarOpen(false);
   }
 
   function selectStrategy(id) {
@@ -365,115 +552,205 @@ function App() {
       </header>
 
       {/* SIDEBAR ANALIS */}
-      {analystDashboard && (
+      {mode === 'analyst' && (
         <nav className="analyst-rail" aria-label={en ? 'Analyst navigation' : 'Navigasi analis'}>
-          <button className="active" aria-label={en ? 'Geospatial dashboard' : 'Dasbor geospasial'} onClick={() => setView('dashboard')}>
+          <button
+            className={view === 'dashboard' && !modal ? 'active' : ''}
+            aria-label={en ? 'Geospatial dashboard' : 'Dasbor geospasial'}
+            onClick={() => {
+              setView('dashboard');
+              setModal(null);
+            }}
+          >
             <LayoutDashboard size={20} />
             <span>{en ? 'Dashboard' : 'Dasbor'}</span>
           </button>
-          <button aria-label={en ? 'Open source metadata' : 'Buka metadata sumber'} onClick={() => setModal('sources')}>
-            <Satellite size={21} />
-            <span>{en ? 'Satellite' : 'Satelit'}</span>
+          <button
+            className={view === 'audit' && !modal ? 'active' : ''}
+            aria-label={en ? 'Decision audit' : 'Audit keputusan'}
+            onClick={openAudit}
+          >
+            <FileCheck2 size={20} />
+            <span>Audit</span>
+          </button>
+          <button
+            className={view === 'nasa' && !modal ? 'active' : ''}
+            aria-label={en ? 'NASA satellite data layers' : 'Lapisan Data NASA'}
+            onClick={() => {
+              setView((prev) => (prev === 'nasa' ? 'dashboard' : 'nasa'));
+              setModal(null);
+            }}
+          >
+            <Satellite size={19} />
+            <span>{en ? 'NASA Data' : 'Data NASA'}</span>
+          </button>
+          <button
+            className={view === 'simulasi' && !modal ? 'active' : ''}
+            aria-label={en ? 'Climate scenario simulation' : 'Simulasi Skenario Iklim'}
+            onClick={() => {
+              setView((prev) => (prev === 'simulasi' ? 'dashboard' : 'simulasi'));
+              setModal(null);
+            }}
+          >
+            <SlidersHorizontal size={19} />
+            <span>{en ? 'Simulation' : 'Simulasi'}</span>
+          </button>
+          <button
+            className={view === 'pareto' && !modal ? 'active' : ''}
+            aria-label={en ? 'Pareto comparison' : 'Perbandingan Pareto'}
+            onClick={() => {
+              setView((prev) => (prev === 'pareto' ? 'dashboard' : 'pareto'));
+              setModal(null);
+            }}
+          >
+            <Activity size={19} />
+            <span>Pareto</span>
+          </button>
+          <button
+            className={view === 'diagnostik' && !modal ? 'active' : ''}
+            aria-label={en ? 'Biophysical & Fiscal Diagnostics' : 'Diagnostik Biofisika & Fiskal'}
+            onClick={() => {
+              setView((prev) => (prev === 'diagnostik' ? 'dashboard' : 'diagnostik'));
+              setModal(null);
+            }}
+          >
+            <Droplets size={19} />
+            <span>{en ? 'Diagnostics' : 'Diagnostik'}</span>
+          </button>
+          <button
+            className={view === 'strategi' && !modal ? 'active' : ''}
+            aria-label={en ? 'Crop Rotation Strategies' : 'Strategi Rotasi Tanaman'}
+            onClick={() => {
+              setView((prev) => (prev === 'strategi' ? 'dashboard' : 'strategi'));
+              setModal(null);
+            }}
+          >
+            <Sprout size={19} />
+            <span>{en ? 'Strategy' : 'Strategi'}</span>
           </button>
           <div className="rail-bottom">
-            <button aria-label={en ? 'Platform guide' : 'Panduan platform'} onClick={() => setModal('help')}>
+            <button
+              className={modal === 'help' ? 'active' : ''}
+              aria-label={en ? 'Platform guide' : 'Panduan platform'}
+              onClick={() => setModal('help')}
+            >
               <CircleHelp size={21} />
               <span>{en ? 'Guide' : 'Panduan'}</span>
             </button>
-            <span className="rail-version">v0.2</span>
           </div>
         </nav>
       )}
 
+      {/* PETA FULL-SCREEN SEBAGAI BACKGROUND (MODE ANALIS) */}
+      {analystDashboard && (
+        <div className="map-bg-stage">
+          <React.Suspense fallback={<div className="map-fallback">{en ? 'Loading schematic map…' : 'Memuat peta skematik…'}</div>}>
+            <LazyMap
+              activeLayers={activeLayers}
+              result={result}
+              resolution={resolution}
+              setResolution={setResolution}
+              selectedCell={selectedCell}
+              showGrid={showGrid}
+              setShowGrid={setShowGrid}
+              onCell={setSelectedCell}
+              lang={lang}
+            />
+          </React.Suspense>
+        </div>
+      )}
+
       {/* KONTEN UTAMA */}
       <main id="content" className={analystDashboard ? 'analyst-main' : view === 'audit' ? 'audit-main' : 'farmer-main'}>
-        {/* ======================= VIEW: DASHBOARD (MODE ANALIS) ======================= */}
-        {view === 'dashboard' && mode === 'analyst' && (
+        {/* ======================= VIEW: DASHBOARD & DRAWER SAMPING (MODE ANALIS) ======================= */}
+        {analystDashboard && (
           <>
             <div className="analyst-heading">
-              <div>
-                <h1>{en ? 'Understanding Land, Planning Resilience' : 'Memahami lahan, Merencanakan Ketahanan'}</h1>
-              </div>
-              <div className="analysis-period">
-                <label htmlFor="period">{en ? 'SAMPLE ANALYSIS PERIOD' : 'PERIODE ANALISIS CONTOH'}</label>
-                <div>
-                  <select
-                    id="period"
-                    aria-label={en ? 'Analysis period' : 'Periode analisis'}
-                    value={period}
-                    onChange={(e) => changePeriod(e.target.value)}
+              <div className="analysis-period" ref={periodWrapRef}>
+                <div className="daily-period-bar">
+                  <button
+                    type="button"
+                    className="period-nav-btn"
+                    aria-label={en ? 'Previous day' : 'Hari sebelumnya'}
+                    title={en ? 'Previous day' : 'Mundur 1 hari'}
+                    disabled={!canGoPrev}
+                    onClick={handlePrevDay}
                   >
-                    {periodOptions.map((option) => (
-                      <option key={option}>{option}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} />
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  <span className="period-date-display">
+                    {period}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="period-nav-btn"
+                    aria-label={en ? 'Next day (up to 3 days ahead)' : 'Hari berikutnya (maks. 3 hari ke depan)'}
+                    title={
+                      canGoNext
+                        ? en
+                          ? 'Next day (max +3 days from today)'
+                          : 'Maju 1 hari (maks. 3 hari dari hari ini)'
+                        : en
+                        ? 'Maximum +3 days from today reached'
+                        : 'Batas maksimal 3 hari ke depan tercapai'
+                    }
+                    disabled={!canGoNext}
+                    onClick={handleNextDay}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
+
+                {calendarOpen && (
+                  <HistoryCalendarPopover
+                    lang={lang}
+                    today={today}
+                    minDate={MIN_HISTORY_DATE}
+                    selectedDate={selectedDate}
+                    viewYear={calViewYear}
+                    viewMonth={calViewMonth}
+                    setViewYear={setCalViewYear}
+                    setViewMonth={setCalViewMonth}
+                    onSelectDate={handleSelectCalendarDate}
+                    onClose={() => setCalendarOpen(false)}
+                  />
+                )}
               </div>
             </div>
 
-            <div className={`analyst-workspace ${!diagnostics ? 'sidebar-collapsed' : ''}`}>
-              <section className="map-and-simulation">
-                {/* Peta Intelijen Lahan */}
-                <div className="map-card">
-                  <div className="map-card-heading">
-                    <h2>
-                      <Globe2 size={16} />
-                      {en ? 'Land Intelligence Map' : 'Peta Intelijen Lahan'}
-                    </h2>
-                  </div>
-
-                  <div className="map-stage">
-                    <React.Suspense fallback={<div className="map-fallback">{en ? 'Loading schematic map…' : 'Memuat peta skematik…'}</div>}>
-                      <LazyMap
-                        activeLayers={activeLayers}
-                        result={result}
-                        resolution={resolution}
-                        setResolution={setResolution}
-                        selectedCell={selectedCell}
-                        showGrid={showGrid}
-                        setShowGrid={setShowGrid}
-                        onCell={setSelectedCell}
-                        lang={lang}
-                      />
-                    </React.Suspense>
-                  </div>
-
-                  {/* Panel Lapisan Satelit NASA di bawah peta */}
-                  <div className={`satellite-panel ${!layersOpen ? 'collapsed' : ''}`}>
-                    <div className="satellite-panel-header">
-                      <div>
-                        <button
-                          className="satellite-title"
-                          onClick={() => setLayersOpen(!layersOpen)}
-                          aria-expanded={layersOpen}
-                        >
-                          <Satellite size={17} />
-                          <span>{en ? 'NASA Satellite Data Layers' : 'Lapisan Data Satelit NASA'}</span>
-                          <ChevronDown
-                            size={16}
-                            style={{
-                              transform: layersOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
-                              transition: 'transform 0.2s ease',
-                            }}
-                          />
+            {/* PANEL DRAWER MUNCUL DARI SAMPING KIRI SAAT MENU DIKLIK */}
+            {view !== 'dashboard' && (
+              <div className="side-menu-drawer" key={view}>
+                {/* 1. MENU DATA NASA */}
+                {view === 'nasa' && (
+                  <aside className="diagnostic-sidebar side-drawer-card">
+                    <div className="diagnostic-heading">
+                      <h2>
+                        <Satellite size={17} />
+                        {en ? 'NASA Data' : 'Data NASA'}
+                      </h2>
+                      <div className="drawer-header-actions">
+                        <button className="metadata-link-btn" onClick={() => setModal('sources')}>
+                          Metadata
+                          <ArrowUpRight size={12} />
                         </button>
-                        {layersOpen && (
-                          <p className="satellite-subtitle">
-                            {en ? 'Select visual context for exploration.' : 'Pilih konteks visual untuk eksplorasi.'}
-                          </p>
-                        )}
+                        <button
+                          type="button"
+                          className="drawer-close-btn"
+                          aria-label={en ? 'Close panel' : 'Tutup panel'}
+                          onClick={() => setView('dashboard')}
+                        >
+                          <X size={16} />
+                        </button>
                       </div>
-                      {layersOpen && (
-                        <div className="layer-foot">
-                          <Info size={13} />
-                          <span>{en ? 'Simulation view. Does not fetch live NASA data.' : 'Tampilan simulasi. Tidak mengambil data NASA.'}</span>
-                        </div>
-                      )}
                     </div>
-
-                    {layersOpen && (
-                      <div className="layer-list">
+                    <div className="diagnostic-content">
+                      <p className="satellite-subtitle" style={{ marginTop: 0, marginBottom: 12 }}>
+                        {en ? 'Select visual context for exploration.' : 'Pilih konteks visual untuk eksplorasi.'}
+                      </p>
+                      <div className="drawer-layer-list">
                         {layers.map((layer, index) => {
                           const Icon = layerIcons[index];
                           const isEnabled = activeLayers.includes(layer.id);
@@ -512,205 +789,250 @@ function App() {
                           );
                         })}
                       </div>
-                    )}
-                  </div>
-
-                  <div className="native-resolution-note">
-                    <button onClick={() => setModal('sources')}>
-                      Metadata
-                      <ArrowUpRight size={12} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Panel Kontrol Iklim */}
-                <section className="climate-panel">
-                  <div className="climate-title">
-                    <div>
-                      <SlidersHorizontal size={17} />
-                      <h2>{en ? 'Climate Scenario Simulation' : 'Simulasi Skenario Iklim'}</h2>
                     </div>
-                  </div>
+                  </aside>
+                )}
 
-                  <div className="climate-controls">
-                    <Slider
-                      label={en ? 'Rainfall anomaly' : 'Anomali curah hujan'}
-                      unit="%"
-                      value={rain}
-                      setValue={setRain}
-                      min={-30}
-                      max={30}
-                      step={5}
-                      icon={CloudRain}
-                    />
-                    <Slider
-                      label={en ? 'Temperature rise' : 'Kenaikan suhu'}
-                      unit="°C"
-                      value={temperature}
-                      setValue={setTemperature}
-                      min={0}
-                      max={3}
-                      step={0.5}
-                      icon={Sun}
-                    />
-                    <button className="button primary run-button" onClick={runSimulation}>
-                      <Play size={15} fill="currentColor" />
-                      {en ? 'Run Simulation' : 'Jalankan Simulasi'}
-                    </button>
-                  </div>
-
-                  <div className="simulation-summary" aria-live="polite">
-                    <span className="summary-status">
-                      <i />
-                      {dirty
-                        ? en
-                          ? 'Changes not yet run'
-                          : 'Perubahan belum dijalankan'
-                        : hasRun
-                        ? en
-                          ? 'Simulation updated'
-                          : 'Simulasi diperbarui'
-                        : en
-                        ? 'Baseline scenario active'
-                        : 'Skenario dasar aktif'}
-                    </span>
-                    <p>{localizedSummary}</p>
-                  </div>
-                </section>
-              </section>
-
-              {/* Sidebar Diagnostik */}
-              {diagnostics && (
-                <aside className="diagnostic-sidebar">
-                  <div className="diagnostic-heading">
-                    <h2>{en ? 'Biophysical & Fiscal Diagnostics' : 'Diagnostik Biofisika & Fiskal'}</h2>
-                    <Info size={15} />
-                  </div>
-
-                  <div className="diagnostic-content">
-                    <div className="diagnostic-kpis">
-                      <RiskMetric
-                        name="PVRS"
-                        explanation={en ? 'Root stress risk (PVRSEngine)' : 'Risiko stres akar (PVRSEngine)'}
-                        value={selectedCell?.indicators?.pvrs ?? result.pvrs}
-                        color="red"
-                        sourceNote={
-                          selectedCell?.indicators?.pvrs != null
-                            ? en
-                              ? 'Real PVRSEngine'
-                              : 'PVRSEngine Riil'
-                            : en
-                            ? 'Simulation Data'
-                            : 'Data Simulasi'
-                        }
-                        lang={lang}
-                      />
-                      <RiskMetric
-                        name="BF-EHSI"
-                        explanation={en ? 'Fallow land erosion risk' : 'Risiko erosi lahan bera'}
-                        value={result.erosion}
-                        color="orange"
-                        sourceNote={en ? 'Simulation Data' : 'Data Simulasi'}
-                        lang={lang}
-                      />
+                {/* 2. MENU SIMULASI SKENARIO IKLIM */}
+                {view === 'simulasi' && (
+                  <aside className="diagnostic-sidebar side-drawer-card">
+                    <div className="diagnostic-heading">
+                      <h2>
+                        <SlidersHorizontal size={17} />
+                        {en ? 'Climate Scenario Simulation' : 'Simulasi Skenario Iklim'}
+                      </h2>
+                      <button
+                        type="button"
+                        className="drawer-close-btn"
+                        aria-label={en ? 'Close panel' : 'Tutup panel'}
+                        onClick={() => setView('dashboard')}
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-
-                    <div className="water-ledger">
-                      <span>
-                        <Droplets size={15} />
-                        {en ? 'Illustrative water balance' : 'Neraca air ilustratif'}
-                      </span>
-                      <strong>
-                        {result.water > 0 ? '+' : ''}
-                        {result.water}
-                        <small> mm</small>
-                      </strong>
-                    </div>
-
-                    <div className="diagnostic-section-title">
-                      <span>{en ? 'CROP ROTATION STRATEGIES' : 'STRATEGI ROTASI TANAMAN'}</span>
-                    </div>
-
-                    <div className="compact-scenarios">
-                      {strategies.map((item) => (
-                        <button
-                          key={item.id}
-                          className={`compact-scenario ${item.id === 'B' ? 'recommended' : ''} ${
-                            selectedStrategy === item.id ? 'selected' : ''
-                          }`}
-                          aria-pressed={selectedStrategy === item.id}
-                          onClick={() => selectStrategy(item.id)}
-                        >
-                          <span className="scenario-letter">{item.id}</span>
-                          <span>
-                            <strong>{item.name}</strong>
-                            <small>
-                              {item.id === 'B' ? (
-                                <>
-                                  <span className="status-dot" />
-                                  {en ? 'Featured in demo' : 'Unggulan dalam demo'}
-                                </>
-                              ) : item.id === 'A' ? (
-                                en ? 'Existing pattern · baseline' : 'Pola eksisting · pembanding'
-                              ) : (
-                                en ? 'Diversification alternative' : 'Alternatif diversifikasi'
-                              )}
-                            </small>
-                          </span>
-                          <span className="scenario-radio">
-                            {selectedStrategy === item.id && <Check size={11} />}
-                          </span>
+                    <div className="diagnostic-content">
+                      <div className="drawer-climate-controls">
+                        <Slider
+                          label={en ? 'Rainfall anomaly' : 'Anomali curah hujan'}
+                          unit="%"
+                          value={rain}
+                          setValue={setRain}
+                          min={-30}
+                          max={30}
+                          step={5}
+                          icon={CloudRain}
+                        />
+                        <Slider
+                          label={en ? 'Temperature rise' : 'Kenaikan suhu'}
+                          unit="°C"
+                          value={temperature}
+                          setValue={setTemperature}
+                          min={0}
+                          max={3}
+                          step={0.5}
+                          icon={Sun}
+                        />
+                        <button className="button primary run-button" style={{ width: '100%' }} onClick={runSimulation}>
+                          <Play size={15} fill="currentColor" />
+                          {en ? 'Run Simulation' : 'Jalankan Simulasi'}
                         </button>
-                      ))}
+                      </div>
+
+                      <div className="simulation-summary" aria-live="polite" style={{ marginTop: 14, paddingBottom: 0 }}>
+                        <span className="summary-status">
+                          <i />
+                          {dirty
+                            ? en
+                              ? 'Changes not yet run'
+                              : 'Perubahan belum dijalankan'
+                            : hasRun
+                            ? en
+                              ? 'Simulation updated'
+                              : 'Simulasi diperbarui'
+                            : en
+                            ? 'Baseline scenario active'
+                            : 'Skenario dasar aktif'}
+                        </span>
+                      </div>
+                    </div>
+                  </aside>
+                )}
+
+                {/* 3. MENU PERBANDINGAN PARETO */}
+                {view === 'pareto' && (
+                  <aside className="diagnostic-sidebar side-drawer-card">
+                    <div className="diagnostic-heading">
+                      <h2>
+                        <Activity size={17} />
+                        {en ? 'Pareto Comparison' : 'Perbandingan Pareto'}
+                      </h2>
+                      <button
+                        type="button"
+                        className="drawer-close-btn"
+                        aria-label={en ? 'Close panel' : 'Tutup panel'}
+                        onClick={() => setView('dashboard')}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="diagnostic-content">
+                      <Pareto selected={selectedStrategy} onSelect={selectStrategy} strategies={strategies} lang={lang} embedded />
+                    </div>
+                  </aside>
+                )}
+
+                {/* 4. MENU DIAGNOSTIK BIOFISIKA & FISKAL */}
+                {view === 'diagnostik' && (
+                  <aside className="diagnostic-sidebar side-drawer-card">
+                    <div className="diagnostic-heading">
+                      <h2>
+                        <Droplets size={17} />
+                        {en ? 'Biophysical & Fiscal Diagnostics' : 'Diagnostik Biofisika & Fiskal'}
+                      </h2>
+                      <button
+                        type="button"
+                        className="drawer-close-btn"
+                        aria-label={en ? 'Close panel' : 'Tutup panel'}
+                        onClick={() => setView('dashboard')}
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
 
-                    <Pareto selected={selectedStrategy} onSelect={selectStrategy} strategies={strategies} lang={lang} />
-
-                    <div className="fiscal-card">
-                      <div>
-                        <span className="fiscal-icon">
-                          <Leaf size={17} />
-                        </span>
-                        <span>{en ? 'POTENTIAL UREA SUBSIDY SAVINGS' : 'POTENSI PENGHEMATAN SUBSIDI UREA'}</span>
+                    <div className="diagnostic-content">
+                      <div className="diagnostic-kpis">
+                        <RiskMetric
+                          name="PVRS"
+                          explanation={en ? 'Root stress risk (PVRSEngine)' : 'Risiko stres akar (PVRSEngine)'}
+                          value={selectedCell?.indicators?.pvrs ?? result.pvrs}
+                          color="red"
+                          sourceNote={
+                            selectedCell?.indicators?.pvrs != null
+                              ? en
+                                ? 'Real PVRSEngine'
+                                : 'PVRSEngine Riil'
+                              : en
+                              ? 'Simulation Data'
+                              : 'Data Simulasi'
+                          }
+                          lang={lang}
+                        />
+                        <RiskMetric
+                          name="BF-EHSI"
+                          explanation={en ? 'Fallow land erosion risk' : 'Risiko erosi lahan bera'}
+                          value={result.erosion}
+                          color="orange"
+                          sourceNote={en ? 'Simulation Data' : 'Data Simulasi'}
+                          lang={lang}
+                        />
                       </div>
-                      <h3>
-                        Rp16,58 <span>{en ? 'Billion' : 'Miliar'}</span>
-                      </h3>
-                      <p>{en ? 'per H3-7 cluster · conceptual budget illustration' : 'per kluster H3-7 · ilustrasi anggaran konsep'}</p>
-                      <div>
+
+                      <div className="water-ledger no-border-bottom">
                         <span>
-                          <ShieldCheck size={13} />
-                          {en ? 'AUTP risk reduction' : 'Penurunan risiko AUTP'}
+                          <Droplets size={15} />
+                          {en ? 'Illustrative water balance' : 'Neraca air ilustratif'}
                         </span>
                         <strong>
-                          {number(result.insurance, 1)}%<small> {en ? 'illustrative' : 'ilustratif'}</small>
+                          {result.water > 0 ? '+' : ''}
+                          {result.water}
+                          <small> mm</small>
                         </strong>
                       </div>
-                      <small className="fiscal-caveat">
-                        {en
-                          ? 'Not verified fiscal output. Cluster area and actual benefits are not yet established.'
-                          : 'Bukan hasil fiskal terverifikasi. Luas kluster dan manfaat aktual belum ditetapkan.'}
-                      </small>
+                    </div>
+                  </aside>
+                )}
+
+                {/* 5. MENU STRATEGI ROTASI TANAMAN */}
+                {view === 'strategi' && (
+                  <aside className="diagnostic-sidebar side-drawer-card">
+                    <div className="diagnostic-heading">
+                      <h2>
+                        <Sprout size={17} />
+                        {en ? 'Crop Rotation Strategies' : 'Strategi Rotasi Tanaman'}
+                      </h2>
+                      <button
+                        type="button"
+                        className="drawer-close-btn"
+                        aria-label={en ? 'Close panel' : 'Tutup panel'}
+                        onClick={() => setView('dashboard')}
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
 
-                    <div className="diagnostic-cta">
-                      <div>
-                        <LockKeyhole size={13} />
-                        {en ? 'Awaiting field verification' : 'Menunggu verifikasi lapangan'}
+                    <div className="diagnostic-content">
+                      <div className="compact-scenarios">
+                        {strategies.map((item) => (
+                          <button
+                            key={item.id}
+                            className={`compact-scenario ${item.id === 'B' ? 'recommended' : ''} ${
+                              selectedStrategy === item.id ? 'selected' : ''
+                            }`}
+                            aria-pressed={selectedStrategy === item.id}
+                            onClick={() => selectStrategy(item.id)}
+                          >
+                            <span className="scenario-letter">{item.id}</span>
+                            <span>
+                              <strong>{item.name}</strong>
+                              <small>
+                                {item.id === 'B' ? (
+                                  <>
+                                    <span className="status-dot" />
+                                    {en ? 'Featured in demo' : 'Unggulan dalam demo'}
+                                  </>
+                                ) : item.id === 'A' ? (
+                                  en ? 'Existing pattern · baseline' : 'Pola eksisting · pembanding'
+                                ) : (
+                                  en ? 'Diversification alternative' : 'Alternatif diversifikasi'
+                                )}
+                              </small>
+                            </span>
+                            <span className="scenario-radio">
+                              {selectedStrategy === item.id && <Check size={11} />}
+                            </span>
+                          </button>
+                        ))}
                       </div>
-                      {commonAuditButton}
-                    </div>
-                  </div>
-                </aside>
-              )}
-            </div>
 
-            <div className="analyst-bottom">
-              <button onClick={() => setModal('help')}>
-                {en ? 'About prototype' : 'Tentang prototipe'}
-                <ArrowUpRight size={12} />
-              </button>
-            </div>
+                      <div className="fiscal-card">
+                        <div>
+                          <span className="fiscal-icon">
+                            <Leaf size={17} />
+                          </span>
+                          <span>{en ? 'POTENTIAL UREA SUBSIDY SAVINGS' : 'POTENSI PENGHEMATAN SUBSIDI UREA'}</span>
+                        </div>
+                        <h3>
+                          Rp16,58 <span>{en ? 'Billion' : 'Miliar'}</span>
+                        </h3>
+                        <p>{en ? 'per H3-7 cluster · conceptual budget illustration' : 'per kluster H3-7 · ilustrasi anggaran konsep'}</p>
+                        <div>
+                          <span>
+                            <ShieldCheck size={13} />
+                            {en ? 'AUTP risk reduction' : 'Penurunan risiko AUTP'}
+                          </span>
+                          <strong>
+                            {number(result.insurance, 1)}%<small> {en ? 'illustrative' : 'ilustratif'}</small>
+                          </strong>
+                        </div>
+                        <small className="fiscal-caveat">
+                          {en
+                            ? 'Not verified fiscal output. Cluster area and actual benefits are not yet established.'
+                            : 'Bukan hasil fiskal terverifikasi. Luas kluster dan manfaat aktual belum ditetapkan.'}
+                        </small>
+                      </div>
+
+                      <div className="diagnostic-cta">
+                        <div>
+                          <LockKeyhole size={13} />
+                          {en ? 'Awaiting field verification' : 'Menunggu verifikasi lapangan'}
+                        </div>
+                        {commonAuditButton}
+                      </div>
+                    </div>
+                  </aside>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -729,15 +1051,6 @@ function App() {
                     : 'Mari kenali kondisi lahan dan pertimbangkan pilihan tanam bersama.'}
                 </p>
               </div>
-
-              <button className="farmer-period" onClick={() => setModal('period')}>
-                <Sun size={20} />
-                <span>
-                  {en ? 'Sample period' : 'Periode contoh'}
-                  <strong>{period}</strong>
-                </span>
-                <ChevronDown size={14} />
-              </button>
             </div>
 
             <div className="farmer-demo-notice">
@@ -984,10 +1297,6 @@ function App() {
                     <BookOpen size={16} />
                     {en ? 'View Recommendation Reasoning' : 'Lihat Alasan Rekomendasi'}
                   </button>
-                  <button className="button secondary" onClick={openShare} disabled={generating}>
-                    <Users size={16} />
-                    {en ? 'Share with Farmer Group' : 'Bagikan ke Kelompok Tani'}
-                  </button>
                 </div>
 
                 <span className="withheld-note">
@@ -1027,22 +1336,6 @@ function App() {
                   : 'Bagikan Ringkasan via WhatsApp'}
               </button>
             </div>
-
-            <footer className="farmer-footer">
-              <span>
-                <Sprout size={16} />
-                {en ? 'CYBER-KATAM · From the earth, for farmers.' : 'CYBER-KATAM · Dari bumi, untuk petani.'}
-              </span>
-              <span>
-                {en
-                  ? 'Simulation prototype. Not a substitute for agronomic expertise.'
-                  : 'Prototipe simulasi. Bukan pengganti keahlian agronomi.'}
-              </span>
-              <button onClick={openAudit}>
-                {en ? 'Audit Recommendation' : 'Audit Rekomendasi'}
-                <ArrowUpRight size={13} />
-              </button>
-            </footer>
           </>
         )}
 
@@ -1651,32 +1944,208 @@ function App() {
       {/* MODAL: PILIH PERIODE */}
       {modal === 'period' && (
         <Modal
-          title={en ? 'Select Sample Period' : 'Pilih Periode Contoh'}
+          title={en ? 'Select Analysis Date' : 'Pilih Tanggal Analisis'}
           closeLabel={en ? 'Close dialog' : 'Tutup dialog'}
           onClose={() => setModal(null)}
         >
           <p className="modal-description">
             {en
-              ? 'This selection changes the sample period in the audit and summary, without fetching real observations.'
-              : 'Pilihan ini mengubah periode contoh pada audit dan ringkasan, bukan mengambil observasi nyata.'}
+              ? 'Select a daily date (up to 3 days ahead of today or historical dates since 2021).'
+              : 'Pilih tanggal harian (maksimal 3 hari ke depan dari hari ini atau data historis hingga 2021).'}
           </p>
           <div className="period-options">
-            {periodOptions.map((option) => (
-              <button
-                className="button secondary"
-                key={option}
-                onClick={() => {
-                  changePeriod(option);
-                  setModal(null);
-                }}
-              >
-                {option}
-                {period === option && <Check size={16} />}
-              </button>
-            ))}
+            {[-2, -1, 0, 1, 2, 3].map((offset) => {
+              const d = addDays(today, offset);
+              const label = formatDailyDate(d, lang);
+              const active = isSameDay(d, selectedDate);
+              return (
+                <button
+                  className="button secondary"
+                  key={offset}
+                  onClick={() => {
+                    applyDateChange(d);
+                    setModal(null);
+                  }}
+                >
+                  {label}
+                  {active && <Check size={16} />}
+                </button>
+              );
+            })}
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function HistoryCalendarPopover({
+  lang = 'id',
+  today,
+  minDate,
+  selectedDate,
+  viewYear,
+  viewMonth,
+  setViewYear,
+  setViewMonth,
+  onSelectDate,
+  onClose,
+}) {
+  const en = lang === 'en';
+  const minYear = minDate.getFullYear();
+  const maxYear = today.getFullYear();
+  const years = [];
+  for (let y = maxYear; y >= minYear; y--) {
+    years.push(y);
+  }
+
+  const monthNames = en
+    ? ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    : ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  const dayHeaders = en
+    ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+    : ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const canPrevMonth = viewYear > minYear || (viewYear === minYear && viewMonth > 0);
+  const canNextMonth = viewYear < maxYear || (viewYear === maxYear && viewMonth < today.getMonth());
+
+  const stepMonth = (delta) => {
+    let nextMonth = viewMonth + delta;
+    let nextYear = viewYear;
+    if (nextMonth < 0) {
+      nextMonth = 11;
+      nextYear -= 1;
+    } else if (nextMonth > 11) {
+      nextMonth = 0;
+      nextYear += 1;
+    }
+    if (nextYear < minYear) return;
+    if (nextYear > maxYear || (nextYear === maxYear && nextMonth > today.getMonth())) return;
+    setViewYear(nextYear);
+    setViewMonth(nextMonth);
+  };
+
+  const cells = [];
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    cells.push(null);
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push(new Date(viewYear, viewMonth, day));
+  }
+
+  return (
+    <div className="history-calendar-popover" role="dialog" aria-label={en ? 'Historical calendar' : 'Kalender historis'}>
+      <div className="history-cal-header">
+        <span className="history-cal-title">
+          <Calendar size={13} />
+          {en ? 'History Calendar (2021 – Today)' : 'Kalender Historis (2021 – Hari Ini)'}
+        </span>
+        <button type="button" className="history-cal-close" onClick={onClose} aria-label={en ? 'Close calendar' : 'Tutup kalender'}>
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="history-cal-controls">
+        <button
+          type="button"
+          className="cal-step-btn"
+          disabled={!canPrevMonth}
+          onClick={() => stepMonth(-1)}
+          aria-label={en ? 'Previous month' : 'Bulan sebelumnya'}
+        >
+          <ChevronLeft size={14} />
+        </button>
+
+        <div className="cal-selects">
+          <select
+            aria-label={en ? 'Select month' : 'Pilih bulan'}
+            value={viewMonth}
+            onChange={(e) => setViewMonth(Number(e.target.value))}
+          >
+            {monthNames.map((mName, idx) => {
+              const disabledMonth = viewYear === maxYear && idx > today.getMonth();
+              return (
+                <option key={mName} value={idx} disabled={disabledMonth}>
+                  {mName}
+                </option>
+              );
+            })}
+          </select>
+
+          <select
+            aria-label={en ? 'Select year' : 'Pilih tahun'}
+            value={viewYear}
+            onChange={(e) => {
+              const nextY = Number(e.target.value);
+              setViewYear(nextY);
+              if (nextY === maxYear && viewMonth > today.getMonth()) {
+                setViewMonth(today.getMonth());
+              }
+            }}
+          >
+            {years.map((yr) => (
+              <option key={yr} value={yr}>
+                {yr}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          className="cal-step-btn"
+          disabled={!canNextMonth}
+          onClick={() => stepMonth(1)}
+          aria-label={en ? 'Next month' : 'Bulan berikutnya'}
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      <div className="history-cal-weekdays">
+        {dayHeaders.map((d) => (
+          <span key={d}>{d}</span>
+        ))}
+      </div>
+
+      <div className="history-cal-grid">
+        {cells.map((cellDate, idx) => {
+          if (!cellDate) {
+            return <span key={`empty-${idx}`} className="cal-day-empty" />;
+          }
+          const isFuture = cellDate > today;
+          const isBeforeMin = cellDate < minDate;
+          const disabled = isFuture || isBeforeMin;
+          const isSelected = isSameDay(cellDate, selectedDate);
+          const isToday = isSameDay(cellDate, today);
+
+          return (
+            <button
+              key={cellDate.toISOString()}
+              type="button"
+              disabled={disabled}
+              className={`cal-day-btn ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
+              onClick={() => onSelectDate(cellDate)}
+            >
+              {cellDate.getDate()}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="history-cal-footer">
+        <button
+          type="button"
+          className="cal-today-btn"
+          onClick={() => onSelectDate(today)}
+        >
+          {en ? 'Back to Today' : 'Kembali ke Hari Ini'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1744,13 +2213,15 @@ function RiskMetric({ name, explanation, value, color, sourceNote = 'Data Simula
   );
 }
 
-function Pareto({ selected, onSelect, strategies, lang = 'id' }) {
+function Pareto({ selected, onSelect, strategies, lang = 'id', embedded = false }) {
   const en = lang === 'en';
   return (
-    <section className="pareto-panel">
-      <div className="pareto-title">
-        <h3>{en ? 'Pareto Comparison' : 'Perbandingan Pareto'}</h3>
-      </div>
+    <section className={embedded ? 'pareto-embedded' : 'pareto-panel'}>
+      {!embedded && (
+        <div className="pareto-title">
+          <h3>{en ? 'Pareto Comparison' : 'Perbandingan Pareto'}</h3>
+        </div>
+      )}
       <div className="pareto-chart">
         <span className="chart-y-label">{en ? 'Soil benefit ↑' : 'Manfaat tanah ↑'}</span>
         <svg

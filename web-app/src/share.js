@@ -1,5 +1,15 @@
 import { number } from './model';
 
+function loadLogoImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
 export async function createInfographic({ strategy, result, period }) {
   const canvas = document.createElement('canvas');
   canvas.width = 720;
@@ -9,15 +19,35 @@ export async function createInfographic({ strategy, result, period }) {
   ctx.fillStyle = '#f5f5f5';
   ctx.fillRect(0, 0, 720, 960);
   ctx.fillStyle = '#486c26';
-  ctx.fillRect(0, 0, 720, 178);
+  ctx.fillRect(0, 0, 720, 164);
   const text = (value, x, y, size, color = '#1f3322', weight = 400) => {
     ctx.font = `${weight} ${size}px Poppins, -apple-system, sans-serif`;
     ctx.fillStyle = color;
     ctx.fillText(value, x, y);
   };
-  text('CYBER-KATAM', 42, 62, 31, '#ffffff', 700);
-  text('RINGKASAN DISKUSI KELOMPOK TANI', 42, 101, 17, '#ebfff3');
-  text('DATA SIMULASI · BUKAN ANJURAN TANAM', 42, 139, 16, '#ffd600', 700);
+
+  const logoImg = await loadLogoImage('/Group 3.png');
+  if (logoImg && logoImg.naturalWidth > 0) {
+    const targetH = 48;
+    const targetW = Math.round((logoImg.naturalWidth / logoImg.naturalHeight) * targetH);
+    const offscreen = document.createElement('canvas');
+    offscreen.width = targetW;
+    offscreen.height = targetH;
+    const offCtx = offscreen.getContext('2d');
+    if (offCtx) {
+      offCtx.drawImage(logoImg, 0, 0, targetW, targetH);
+      offCtx.globalCompositeOperation = 'source-in';
+      offCtx.fillStyle = '#ffffff';
+      offCtx.fillRect(0, 0, targetW, targetH);
+      ctx.drawImage(offscreen, 42, 34);
+    } else {
+      ctx.drawImage(logoImg, 42, 34, targetW, targetH);
+    }
+  } else {
+    text('Ciber Katam', 42, 70, 31, '#ffffff', 700);
+  }
+
+  text('DATA SIMULASI · BUKAN ANJURAN TANAM', 42, 126, 16, '#ffd600', 700);
   text('Banyumas, Jawa Tengah', 42, 224, 26, '#1f3322', 700);
   text(`Periode contoh: ${period}`, 42, 261, 20, '#5f785b');
   ctx.fillStyle = '#fffbe6';

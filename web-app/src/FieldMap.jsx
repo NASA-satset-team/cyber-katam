@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Crosshair, Layers3, MapPin, Minus, Plus, X } from 'lucide-react';
+import { Crosshair, Layers3, MapPin, Minus, Plus, Sprout, X } from 'lucide-react';
 import { cellCondition, number, formatIndicator, indicatorSummaryLabel } from './model';
 
 // Titik tengah Banyumas, Jawa Tengah
@@ -46,12 +46,14 @@ export default function FieldMap({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const geojsonLayerRef = useRef(null);
+  const paddyLayerRef = useRef(null);
 
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
   const [hover, setHover] = useState(null);
+  const [showPaddy, setShowPaddy] = useState(true);
 
-  // Inisialisasi Peta Leaflet dengan Google Hybrid + OSM
+  // Inisialisasi Peta Leaflet dengan Google Hybrid (Satelit)
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -62,7 +64,7 @@ export default function FieldMap({
       attributionControl: true,
     });
 
-    // 1. Google Maps Hybrid (Citra Satelit Beresolusi Tinggi + Label Jalan)
+    // Google Maps Hybrid (Citra Satelit Beresolusi Tinggi + Label Jalan)
     const googleHybrid = L.tileLayer(
       'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
       {
@@ -72,34 +74,7 @@ export default function FieldMap({
       }
     );
 
-    // 2. Google Maps Street (Peta jalan standar)
-    const googleRoads = L.tileLayer(
-      'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-      {
-        maxZoom: 20,
-        attribution: '&copy; Google Maps',
-      }
-    );
-
-    // 3. OpenStreetMap
-    const osm = L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors',
-      }
-    );
-
-    // Pasang Google Hybrid secara default
     googleHybrid.addTo(map);
-
-    // Tambahkan kontrol basemap di pojok kanan atas
-    const baseLayers = {
-      'Google Satelit': googleHybrid,
-      'Google Roads': googleRoads,
-      OpenStreetMap: osm,
-    };
-    const layerControl = L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
 
     // Load layer petak sawah riil Copernicus Sentinel-2
     fetch('/banyumas_paddy_mask.geojson')
@@ -114,18 +89,36 @@ export default function FieldMap({
             fillOpacity: 0.22,
           },
         });
+        paddyLayerRef.current = paddyLayer;
         paddyLayer.addTo(map);
-        layerControl.addOverlay(paddyLayer, '🌾 Sawah Riil (Sentinel-2)');
       })
       .catch(() => {});
 
     mapInstanceRef.current = map;
+    const timer = setTimeout(() => map.invalidateSize(), 150);
+    const onResize = () => map.invalidateSize();
+    window.addEventListener('resize', onResize);
 
     return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', onResize);
       map.remove();
       mapInstanceRef.current = null;
+      paddyLayerRef.current = null;
     };
   }, []);
+
+  // Toggle visibilitas layer sawah riil Sentinel-2
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const paddyLayer = paddyLayerRef.current;
+    if (!map || !paddyLayer) return;
+    if (showPaddy) {
+      if (!map.hasLayer(paddyLayer)) paddyLayer.addTo(map);
+    } else if (map.hasLayer(paddyLayer)) {
+      map.removeLayer(paddyLayer);
+    }
+  }, [showPaddy]);
 
   // Fetch data grid sintetis H3
   useEffect(() => {
@@ -228,43 +221,12 @@ export default function FieldMap({
   const resetView = () => mapInstanceRef.current?.setView(BANYUMAS_CENTER, 12);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '603px' }}>
+    <div className="field-map-root">
       {/* Wadah Peta Asli Leaflet */}
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
-
-      {/* Indikator Koordinat */}
-      <div className="map-coordinate">
-        <span className="status-dot" /> {en ? 'BANYUMAS, CENTRAL JAVA' : 'BANYUMAS, JAWA TENGAH'} <span>{en ? '7°27′ S · 109°10′ E' : '7°27′ LS · 109°10′ BT'}</span>
-      </div>
-
-      {/* Arah Mata Angin */}
-      <div className="map-north">
-        <span>↑</span>{en ? 'N' : 'U'}
-      </div>
-
-      {/* Tombol Kontrol Peta */}
-      <div className="map-tools" style={{ zIndex: 1000 }}>
-        <button aria-label={en ? 'Zoom in' : 'Perbesar peta'} onClick={zoomIn}>
-          <Plus size={17} />
-        </button>
-        <button aria-label={en ? 'Zoom out' : 'Perkecil peta'} onClick={zoomOut}>
-          <Minus size={17} />
-        </button>
-        <button aria-label={en ? 'Reset map view' : 'Atur ulang peta'} onClick={resetView}>
-          <Crosshair size={17} />
-        </button>
-        <button
-          aria-label={en ? 'Toggle H3 grid' : 'Tampilkan kisi H3'}
-          aria-pressed={showGrid}
-          onClick={() => setShowGrid(!showGrid)}
-          className={showGrid ? 'active' : ''}
-        >
-          <Layers3 size={17} />
-        </button>
-      </div>
+      <div ref={mapContainerRef} className="leaflet-canvas-box" />
 
       {/* Pemilihan Resolusi H3 */}
-      <div className="map-resolution" style={{ zIndex: 1000, right: '110px' }}>
+      <div className="map-resolution" style={{ zIndex: 1000 }}>
         <span>{en ? 'H3 Resolution' : 'Resolusi H3'}</span>
         {[7, 8, 9].map((level) => (
           <button
@@ -279,6 +241,99 @@ export default function FieldMap({
             {level}
           </button>
         ))}
+      </div>
+
+      {/* Gugus Kontrol Peta (Kompas 3D, Sawah Riil, Zoom In/Out, Reset, Kisi H3) di atas kanan Lapisan Data Satelit */}
+      <div className="map-controls-dock" style={{ zIndex: 1000 }}>
+        {/* Kompas 3D */}
+        <button
+          type="button"
+          className="map-compass-btn"
+          aria-label={en ? 'North compass (Reset orientation)' : 'Kompas Utara (Atur ulang arah peta)'}
+          title={en ? 'North (Reset view)' : 'Arah Utara (Atur ulang peta)'}
+          onClick={resetView}
+        >
+          <svg viewBox="0 0 40 40" width="26" height="26" className="compass-3d-svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="bezel3d" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="45%" stopColor="#cbd5e1" />
+                <stop offset="100%" stopColor="#475569" />
+              </linearGradient>
+              <radialGradient id="dial3d" cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#1e293b" />
+                <stop offset="100%" stopColor="#090d16" />
+              </radialGradient>
+              <filter id="needleShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="1.2" stdDeviation="1" floodColor="#000000" floodOpacity="0.55" />
+              </filter>
+            </defs>
+            {/* Lingkaran Bezel 3D Luar */}
+            <circle cx="20" cy="20" r="18" fill="url(#bezel3d)" stroke="#334155" strokeWidth="0.8" />
+            <circle cx="20" cy="20" r="15.2" fill="url(#dial3d)" stroke="#94a3b8" strokeWidth="0.6" />
+            {/* Garis Derajat Kompas */}
+            <line x1="20" y1="5.5" x2="20" y2="8" stroke="#f8fafc" strokeWidth="1.2" />
+            <line x1="20" y1="32" x2="20" y2="34.5" stroke="#94a3b8" strokeWidth="1" />
+            <line x1="5.5" y1="20" x2="8" y2="20" stroke="#94a3b8" strokeWidth="1" />
+            <line x1="32" y1="20" x2="34.5" y2="20" stroke="#94a3b8" strokeWidth="1" />
+            {/* Bintang Sekunder 3D */}
+            <polygon points="20,13 24.5,15.5 27,20 24.5,24.5 20,27 15.5,24.5 13,20 15.5,15.5" fill="#d97706" opacity="0.65" />
+            {/* Jarum Barat & Timur 3D */}
+            <polygon points="8.5,20 20,17.2 20,20" fill="#e2e8f0" />
+            <polygon points="8.5,20 20,22.8 20,20" fill="#64748b" />
+            <polygon points="31.5,20 20,17.2 20,20" fill="#cbd5e1" />
+            <polygon points="31.5,20 20,22.8 20,20" fill="#475569" />
+            {/* Jarum Kompas 3D (Utara Merah Berfaset & Selatan Perak Berfaset) */}
+            <g filter="url(#needleShadow)">
+              {/* Utara - Faset Kiri Terang */}
+              <polygon points="20,6.2 15.8,20 20,20" fill="#ff5252" />
+              {/* Utara - Faset Kanan Gelap */}
+              <polygon points="20,6.2 24.2,20 20,20" fill="#b91c1c" />
+              {/* Selatan - Faset Kiri Terang */}
+              <polygon points="20,33.8 15.8,20 20,20" fill="#f8fafc" />
+              {/* Selatan - Faset Kanan Gelap */}
+              <polygon points="20,33.8 24.2,20 20,20" fill="#64748b" />
+            </g>
+            {/* Poros Tengah Emas 3D */}
+            <circle cx="20" cy="20" r="2.6" fill="#facc15" stroke="#713f12" strokeWidth="0.7" />
+            <circle cx="19.3" cy="19.3" r="0.9" fill="#fef9c3" />
+          </svg>
+          <span className="compass-badge">{en ? 'N' : 'U'}</span>
+        </button>
+
+        {/* Tombol Mandiri Sawah Riil (Sentinel-2) - Ikon Padi */}
+        <button
+          type="button"
+          className={`paddy-toggle-btn ${showPaddy ? 'active' : ''}`}
+          aria-label={en ? 'Toggle Real Paddy Layer (Sentinel-2)' : 'Tampilkan Sawah Riil (Sentinel-2)'}
+          title={en ? 'Real Paddy Layer (Sentinel-2)' : 'Sawah Riil (Sentinel-2)'}
+          aria-pressed={showPaddy}
+          onClick={() => setShowPaddy((prev) => !prev)}
+        >
+          <Sprout size={17} />
+        </button>
+
+        {/* Tombol Kontrol Peta (Zoom In, Zoom Out, Reset, Kisi H3) */}
+        <div className="map-tools">
+          <button aria-label={en ? 'Zoom in' : 'Perbesar peta'} title={en ? 'Zoom in' : 'Perbesar peta'} onClick={zoomIn}>
+            <Plus size={17} />
+          </button>
+          <button aria-label={en ? 'Zoom out' : 'Perkecil peta'} title={en ? 'Zoom out' : 'Perkecil peta'} onClick={zoomOut}>
+            <Minus size={17} />
+          </button>
+          <button aria-label={en ? 'Reset map view' : 'Atur ulang peta'} title={en ? 'Reset map view' : 'Atur ulang peta'} onClick={resetView}>
+            <Crosshair size={17} />
+          </button>
+          <button
+            aria-label={en ? 'Toggle H3 grid' : 'Tampilkan kisi H3'}
+            title={en ? 'Toggle H3 grid' : 'Tampilkan kisi H3'}
+            aria-pressed={showGrid}
+            onClick={() => setShowGrid(!showGrid)}
+            className={showGrid ? 'active' : ''}
+          >
+            <Layers3 size={17} />
+          </button>
+        </div>
       </div>
 
       {/* Sumber Catatan */}

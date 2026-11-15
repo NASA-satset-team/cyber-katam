@@ -26,6 +26,7 @@ import {
   Leaf,
   LockKeyhole,
   MapPin,
+  Menu,
   Moon,
   Play,
   Satellite,
@@ -252,6 +253,8 @@ function App() {
   const [generating, setGenerating] = useState(false);
   const [toast, setToast] = useState('');
   const [term, setTerm] = useState(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef(null);
 
   const en = lang === 'en';
   const period = formatDailyDate(selectedDate, lang);
@@ -330,6 +333,17 @@ function App() {
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [calendarOpen]);
+
+  useEffect(() => {
+    if (!headerMenuOpen) return;
+    const onPointerDown = (e) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target)) {
+        setHeaderMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [headerMenuOpen]);
 
   function changeMode(next) {
     setMode(next);
@@ -508,51 +522,71 @@ function App() {
 
           <div className="header-Divider-small" />
 
-          {/* Toggle Bahasa ID / EN */}
-          <div className="lang-switch" role="group" aria-label={en ? 'Select language' : 'Pilih bahasa'}>
+          {/* Menu Bahasa & Mode Gelap/Terang (Tampil langsung di Desktop, Ikon Garis Tiga di Mobile) */}
+          <div className="header-menu-wrap" ref={headerMenuRef}>
             <button
-              className={lang === 'id' ? 'active' : ''}
-              aria-pressed={lang === 'id'}
-              onClick={() => setLang('id')}
-              title="Bahasa Indonesia"
+              type="button"
+              className={`header-hamburger-btn ${headerMenuOpen ? 'active' : ''}`}
+              aria-expanded={headerMenuOpen}
+              aria-label={en ? 'Open language and theme menu' : 'Buka menu bahasa dan tema'}
+              title={en ? 'Language & Theme' : 'Bahasa & Tema'}
+              onClick={() => setHeaderMenuOpen((prev) => !prev)}
             >
-              ID
+              <Menu size={18} />
             </button>
-            <button
-              className={lang === 'en' ? 'active' : ''}
-              aria-pressed={lang === 'en'}
-              onClick={() => setLang('en')}
-              title="English"
-            >
-              EN
-            </button>
-          </div>
 
-          {/* Toggle Tema Light / Dark */}
-          <button
-            className="theme-toggle"
-            aria-label={
-              theme === 'dark'
-                ? en
-                  ? 'Switch to Light Mode'
-                  : 'Ganti ke Mode Terang'
-                : en
-                ? 'Switch to Dark Mode'
-                : 'Ganti ke Mode Gelap'
-            }
-            title={
-              theme === 'dark'
-                ? en
-                  ? 'Light Mode'
-                  : 'Mode Terang'
-                : en
-                ? 'Dark Mode'
-                : 'Mode Gelap'
-            }
-            onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
-          >
-            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
+            <div
+              className={`header-settings-popover ${headerMenuOpen ? 'open' : ''}`}
+              role="group"
+              aria-label={en ? 'Language and theme settings' : 'Pengaturan bahasa dan tema'}
+            >
+              {/* Toggle Bahasa ID / EN */}
+              <div className="lang-switch" role="group" aria-label={en ? 'Select language' : 'Pilih bahasa'}>
+                <button
+                  className={lang === 'id' ? 'active' : ''}
+                  aria-pressed={lang === 'id'}
+                  onClick={() => setLang('id')}
+                  title="Bahasa Indonesia"
+                >
+                  ID
+                </button>
+                <button
+                  className={lang === 'en' ? 'active' : ''}
+                  aria-pressed={lang === 'en'}
+                  onClick={() => setLang('en')}
+                  title="English"
+                >
+                  EN
+                </button>
+              </div>
+
+              {/* Toggle Tema Light / Dark */}
+              <button
+                className="theme-toggle"
+                aria-label={
+                  theme === 'dark'
+                    ? en
+                      ? 'Switch to Light Mode'
+                      : 'Ganti ke Mode Terang'
+                    : en
+                    ? 'Switch to Dark Mode'
+                    : 'Ganti ke Mode Gelap'
+                }
+                title={
+                  theme === 'dark'
+                    ? en
+                      ? 'Light Mode'
+                      : 'Mode Terang'
+                    : en
+                    ? 'Dark Mode'
+                    : 'Mode Gelap'
+                }
+                onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+              >
+                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -560,20 +594,15 @@ function App() {
       {mode === 'analyst' && (
         <nav className="analyst-rail" aria-label={en ? 'Analyst navigation' : 'Navigasi analis'}>
           <button
-            className={view === 'dashboard' && !modal ? 'active' : ''}
-            aria-label={en ? 'Geospatial dashboard' : 'Dasbor geospasial'}
-            onClick={() => {
-              setView('dashboard');
-              setModal(null);
-            }}
-          >
-            <LayoutDashboard size={20} />
-            <span>{en ? 'Dashboard' : 'Dasbor'}</span>
-          </button>
-          <button
             className={view === 'audit' && !modal ? 'active' : ''}
             aria-label={en ? 'Decision audit' : 'Audit keputusan'}
-            onClick={openAudit}
+            onClick={() => {
+              if (view === 'audit') {
+                setView('dashboard');
+              } else {
+                openAudit();
+              }
+            }}
           >
             <FileCheck2 size={20} />
             <span>Audit</span>
@@ -671,61 +700,82 @@ function App() {
         {/* ======================= VIEW: DASHBOARD & DRAWER SAMPING (MODE ANALIS) ======================= */}
         {analystDashboard && (
           <>
-            <div className="analyst-heading">
-              <div className="analysis-period" ref={periodWrapRef}>
-                <div className="daily-period-bar">
-                  <button
-                    type="button"
-                    className="period-nav-btn"
-                    aria-label={en ? 'Previous day' : 'Hari sebelumnya'}
-                    title={en ? 'Previous day' : 'Mundur 1 hari'}
-                    disabled={!canGoPrev}
-                    onClick={handlePrevDay}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
+            <div className="analyst-top-bar" ref={periodWrapRef}>
+              <div className="analyst-heading">
+                <div className="analysis-period">
+                  <div className="daily-period-bar">
+                    <button
+                      type="button"
+                      className="period-nav-btn"
+                      aria-label={en ? 'Previous day' : 'Hari sebelumnya'}
+                      title={en ? 'Previous day' : 'Mundur 1 hari'}
+                      disabled={!canGoPrev}
+                      onClick={handlePrevDay}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
 
-                  <span className="period-date-display">
-                    {period}
-                    {forecastDate && <small>{en ? 'Prediction' : 'Prediksi'}</small>}
-                  </span>
+                    <span className="period-date-display">
+                      {period}
+                      {forecastDate && <small>{en ? 'Prediction' : 'Prediksi'}</small>}
+                    </span>
 
-                  <button
-                    type="button"
-                    className="period-nav-btn"
-                    aria-label={en ? 'Next day (up to 3 days ahead)' : 'Hari berikutnya (maks. 3 hari ke depan)'}
-                    title={
-                      canGoNext
-                        ? en
-                          ? 'Next day (max +3 days from today)'
-                          : 'Maju 1 hari (maks. 3 hari dari hari ini)'
-                        : en
-                        ? 'Maximum +3 days from today reached'
-                        : 'Batas maksimal 3 hari ke depan tercapai'
-                    }
-                    disabled={!canGoNext}
-                    onClick={handleNextDay}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+                    <button
+                      type="button"
+                      className="period-nav-btn"
+                      aria-label={en ? 'Next day (up to 3 days ahead)' : 'Hari berikutnya (maks. 3 hari ke depan)'}
+                      title={
+                        canGoNext
+                          ? en
+                            ? 'Next day (max +3 days from today)'
+                            : 'Maju 1 hari (maks. 3 hari dari hari ini)'
+                          : en
+                          ? 'Maximum +3 days from today reached'
+                          : 'Batas maksimal 3 hari ke depan tercapai'
+                      }
+                      disabled={!canGoNext}
+                      onClick={handleNextDay}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
 
-                {calendarOpen && (
-                  <HistoryCalendarPopover
-                    lang={lang}
-                    today={today}
-                    minDate={MIN_HISTORY_DATE}
-                    selectedDate={selectedDate}
-                    viewYear={calViewYear}
-                    viewMonth={calViewMonth}
-                    setViewYear={setCalViewYear}
-                    setViewMonth={setCalViewMonth}
-                    onSelectDate={handleSelectCalendarDate}
-                    onClose={() => setCalendarOpen(false)}
-                  />
-                )}
+                {/* Pemilihan Resolusi H3 Sejajar */}
+                <div className="map-resolution">
+                  <span>{en ? 'H3 Resolution' : 'Resolusi H3'}</span>
+                  {[7, 8, 9].map((level) => (
+                    <button
+                      key={level}
+                      aria-pressed={resolution === level}
+                      className={resolution === level ? 'active' : ''}
+                      onClick={() => {
+                        setResolution(level);
+                        setSelectedCell(null);
+                      }}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+
+                <LiveWeather lang={lang} />
               </div>
-              <LiveWeather lang={lang} />
+
+              {calendarOpen && (
+                <HistoryCalendarPopover
+                  lang={lang}
+                  today={today}
+                  minDate={MIN_HISTORY_DATE}
+                  selectedDate={selectedDate}
+                  viewYear={calViewYear}
+                  viewMonth={calViewMonth}
+                  setViewYear={setCalViewYear}
+                  setViewMonth={setCalViewMonth}
+                  onSelectDate={handleSelectCalendarDate}
+                  onClose={() => setCalendarOpen(false)}
+                />
+              )}
             </div>
 
             {/* PANEL DRAWER MUNCUL DARI SAMPING KIRI SAAT MENU DIKLIK */}

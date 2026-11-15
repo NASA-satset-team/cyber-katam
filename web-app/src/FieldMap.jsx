@@ -225,24 +225,6 @@ export default function FieldMap({
       {/* Wadah Peta Asli Leaflet */}
       <div ref={mapContainerRef} className="leaflet-canvas-box" />
 
-      {/* Pemilihan Resolusi H3 */}
-      <div className="map-resolution" style={{ zIndex: 1000 }}>
-        <span>{en ? 'H3 Resolution' : 'Resolusi H3'}</span>
-        {[7, 8, 9].map((level) => (
-          <button
-            key={level}
-            aria-pressed={resolution === level}
-            className={resolution === level ? 'active' : ''}
-            onClick={() => {
-              setResolution(level);
-              onCell(null);
-            }}
-          >
-            {level}
-          </button>
-        ))}
-      </div>
-
       {/* Gugus Kontrol Peta (Kompas 3D, Sawah Riil, Zoom In/Out, Reset, Kisi H3) di atas kanan Lapisan Data Satelit */}
       <div className="map-controls-dock" style={{ zIndex: 1000 }}>
         {/* Kompas 3D */}

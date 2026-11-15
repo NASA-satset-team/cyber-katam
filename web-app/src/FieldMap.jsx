@@ -14,6 +14,12 @@ const colors = {
   unknown: '#8ca393',
 };
 
+function forecastRainColor(rain) {
+  if (rain == null) return colors.unknown;
+  const t = Math.max(0, Math.min(1, rain / 50));
+  return `rgb(${Math.round(186 - 179 * t)}, ${Math.round(230 - 141 * t)}, ${Math.round(253 - 120 * t)})`;
+}
+
 const conditionLabelsByLang = {
   id: {
     safe: 'Koridor rotasi relatif aman',
@@ -38,6 +44,7 @@ export default function FieldMap({
   selectedCell,
   showGrid,
   setShowGrid,
+  forecastDate,
   lang = 'id',
 }) {
   const conditionLabels = conditionLabelsByLang[lang] || conditionLabelsByLang.id;
@@ -52,6 +59,43 @@ export default function FieldMap({
   const [error, setError] = useState(false);
   const [hover, setHover] = useState(null);
   const [showPaddy, setShowPaddy] = useState(true);
+  const [forecastRequest, setForecastRequest] = useState(null);
+  const forecastMode = Boolean(forecastDate);
+  const currentForecastRequest = forecastRequest?.date === forecastDate && forecastRequest?.resolution === resolution
+    ? forecastRequest
+    : null;
+  const forecast = currentForecastRequest?.data;
+  const forecastError = currentForecastRequest?.error;
+  const selectedForecast = forecast?.cells[selectedCell?.id];
+  const forecastValue = (value) => value == null ? '—' : value.toLocaleString(en ? 'en-GB' : 'id-ID', {
+    minimumFractionDigits: 1, maximumFractionDigits: 1,
+  });
+
+  useEffect(() => {
+    setHover(null);
+    if (!forecastDate) return;
+    const controller = new AbortController();
+    setForecastRequest(null);
+    fetch(`/api/forecast/map?date=${forecastDate}&resolution=${resolution}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.json();
+          throw new Error(typeof body.detail === 'string' ? body.detail : `HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (!controller.signal.aborted) {
+          setForecastRequest({ date: forecastDate, resolution, data: payload });
+        }
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) {
+          setForecastRequest({ date: forecastDate, resolution, error: e.message });
+        }
+      });
+    return () => controller.abort();
+  }, [forecastDate, resolution]);
 
   // Inisialisasi Peta Leaflet dengan Google Hybrid (Satelit)
   useEffect(() => {
@@ -76,7 +120,7 @@ export default function FieldMap({
 
     googleHybrid.addTo(map);
 
-    // Load layer petak sawah riil Copernicus Sentinel-2
+    // Load layer ROI sawah ESA WorldCover cropland_frac >= 0.9
     fetch('/banyumas_paddy_mask.geojson')
       .then((r) => (r.ok ? r.json() : null))
       .then((geo) => {
@@ -108,7 +152,7 @@ export default function FieldMap({
     };
   }, []);
 
-  // Toggle visibilitas layer sawah riil Sentinel-2
+  // Toggle visibilitas layer ROI sawah
   useEffect(() => {
     const map = mapInstanceRef.current;
     const paddyLayer = paddyLayerRef.current;
@@ -146,9 +190,11 @@ export default function FieldMap({
       geojsonLayerRef.current = null;
     }
 
-    if (!showGrid) return;
+    if (!showGrid || (forecastMode && !forecast)) return;
 
-    const cells = data.levels[String(resolution)] || [];
+    const cells = (data.levels[String(resolution)] || []).map((cell) => forecastMode
+      ? { id: cell.id, ring: cell.ring, forecast: forecast.cells[cell.id] }
+      : cell);
 
     // Konversi ring koordinat [lng, lat] ke GeoJSON Polygon format
     const geojsonData = {
@@ -164,19 +210,31 @@ export default function FieldMap({
       })),
     };
 
-    const layer = L.geoJSON(geojsonData, {
-      style: (feature) => {
-        const condition = cellCondition(feature.properties, activeLayers, result);
-        const isSelected = selectedCell?.id === feature.id;
-        const isPaddy = feature.properties?.indicators?.paddy_gate_passed !== false;
+    const cellStyle = (feature) => {
+      const isSelected = selectedCell?.id === feature.id;
+      if (forecastMode) {
+        const color = forecastRainColor(feature.properties.forecast?.fc_precip_total_mm);
         return {
-          fillColor: isPaddy ? colors[condition] : '#64748b',
-          fillOpacity: isSelected ? 0.75 : isPaddy ? 0.32 : 0.08,
-          color: isSelected ? '#ffffff' : isPaddy ? colors[condition] : '#94a3b8',
+          fillColor: color,
+          fillOpacity: isSelected ? 0.75 : 0.5,
+          color: isSelected ? '#ffffff' : color,
           weight: isSelected ? 2.5 : resolution === 9 ? 0.8 : 1.4,
-          dashArray: isSelected ? '' : isPaddy ? '2' : '4',
+          dashArray: '',
         };
-      },
+      }
+      const condition = cellCondition(feature.properties, activeLayers, result);
+      const isPaddy = feature.properties?.indicators?.paddy_gate_passed !== false;
+      return {
+        fillColor: isPaddy ? colors[condition] : '#64748b',
+        fillOpacity: isSelected ? 0.75 : isPaddy ? 0.32 : 0.08,
+        color: isSelected ? '#ffffff' : isPaddy ? colors[condition] : '#94a3b8',
+        weight: isSelected ? 2.5 : resolution === 9 ? 0.8 : 1.4,
+        dashArray: isSelected ? '' : isPaddy ? '2' : '4',
+      };
+    };
+
+    const layer = L.geoJSON(geojsonData, {
+      style: cellStyle,
       onEachFeature: (feature, l) => {
         l.on({
           click: () => {
@@ -197,15 +255,7 @@ export default function FieldMap({
           },
           mouseout: (e) => {
             setHover(null);
-            const isSelected = selectedCell?.id === feature.id;
-            const condition = cellCondition(feature.properties, activeLayers, result);
-            const isPaddy = feature.properties?.indicators?.paddy_gate_passed !== false;
-            e.target.setStyle({
-              fillColor: isPaddy ? colors[condition] : '#64748b',
-              fillOpacity: isSelected ? 0.75 : isPaddy ? 0.32 : 0.08,
-              color: isSelected ? '#ffffff' : isPaddy ? colors[condition] : '#94a3b8',
-              weight: isSelected ? 2.5 : resolution === 9 ? 0.8 : 1.4,
-            });
+            e.target.setStyle(cellStyle(feature));
           },
         });
       },
@@ -213,7 +263,7 @@ export default function FieldMap({
 
     layer.addTo(map);
     geojsonLayerRef.current = layer;
-  }, [data, resolution, activeLayers, result, selectedCell, showGrid, onCell]);
+  }, [data, resolution, activeLayers, result, selectedCell, showGrid, onCell, forecastMode, forecast]);
 
   // Tombol kontrol navigasi kustom
   const zoomIn = () => mapInstanceRef.current?.zoomIn();
@@ -243,7 +293,7 @@ export default function FieldMap({
         ))}
       </div>
 
-      {/* Gugus Kontrol Peta (Kompas 3D, Sawah Riil, Zoom In/Out, Reset, Kisi H3) di atas kanan Lapisan Data Satelit */}
+      {/* Gugus Kontrol Peta (Kompas 3D, ROI Sawah, Zoom In/Out, Reset, Kisi H3) di atas kanan Lapisan Data Satelit */}
       <div className="map-controls-dock" style={{ zIndex: 1000 }}>
         {/* Kompas 3D */}
         <button
@@ -301,12 +351,12 @@ export default function FieldMap({
           <span className="compass-badge">{en ? 'N' : 'U'}</span>
         </button>
 
-        {/* Tombol Mandiri Sawah Riil (Sentinel-2) - Ikon Padi */}
+        {/* Tombol Mandiri ROI Sawah (WorldCover >= 90%) - Ikon Padi */}
         <button
           type="button"
           className={`paddy-toggle-btn ${showPaddy ? 'active' : ''}`}
-          aria-label={en ? 'Toggle Real Paddy Layer (Sentinel-2)' : 'Tampilkan Sawah Riil (Sentinel-2)'}
-          title={en ? 'Real Paddy Layer (Sentinel-2)' : 'Sawah Riil (Sentinel-2)'}
+          aria-label={en ? 'Toggle Paddy ROI Layer (WorldCover >= 90%)' : 'Tampilkan ROI Sawah (WorldCover >= 90%)'}
+          title={en ? 'Paddy ROI (WorldCover >= 90%)' : 'ROI Sawah (WorldCover >= 90%)'}
           aria-pressed={showPaddy}
           onClick={() => setShowPaddy((prev) => !prev)}
         >
@@ -336,14 +386,36 @@ export default function FieldMap({
         </div>
       </div>
 
+      {forecastMode && (
+        <div className="forecast-map-legend">
+          <strong>{en ? 'Predicted rainfall' : 'Prediksi hujan'} · {forecast?.horizon_code || forecastDate}</strong>
+          <span className="forecast-rain-scale" aria-hidden="true" />
+          <span className="forecast-rain-range"><span>0</span><span>{en ? '50+ mm/day' : '50+ mm/hari'}</span></span>
+          <small>{en ? 'Model output from weather API + formula' : 'Hasil model dari API cuaca + rumus'}</small>
+        </div>
+      )}
+
       {/* Sumber Catatan */}
       <div className="map-source-note" style={{ zIndex: 1000 }}>
         {en ? 'Satellite Imagery & Real Map · Google Maps / OpenStreetMap' : 'Citra Satelit & Peta Nyata · Google Maps / OpenStreetMap'}<br />
-        {en ? 'Synthetic H3 Overlay · Banyumas, Central Java · Indicators: NASA GPM/SMAP/HLS/MODIS/SRTM' : 'Hamparan H3 Sintetis · Banyumas, Jawa Tengah · Indikator: NASA GPM/SMAP/HLS/MODIS/SRTM'}
+        {forecastMode
+          ? en
+            ? `Meteomatics-based prediction · ${forecastDate} · PSF interpolation, not per-cell observations`
+            : `Prediksi berbasis Meteomatics · ${forecastDate} · interpolasi PSF, bukan observasi per sel`
+          : en ? 'Synthetic H3 Overlay · Banyumas, Central Java · Indicators: NASA GPM/SMAP/HLS/MODIS/SRTM' : 'Hamparan H3 Sintetis · Banyumas, Jawa Tengah · Indikator: NASA GPM/SMAP/HLS/MODIS/SRTM'}
       </div>
 
       {/* Tooltip Hover Sel */}
-      {hover && (
+      {hover && forecastMode && (
+        <div className="hex-tooltip" role="tooltip" style={{ zIndex: 1000 }}>
+          <span>{en ? 'MODEL PREDICTION' : 'PREDIKSI MODEL'} · {forecast?.horizon_code} · H3-{resolution}</span>
+          <strong>{hover.id}</strong>
+          <p>{en ? 'Rain' : 'Hujan'}: {forecastValue(hover.forecast?.fc_precip_total_mm)} {en ? 'mm/day' : 'mm/hari'}</p>
+          <small>{en ? 'Max. temperature' : 'Suhu maks.'}: {forecastValue(hover.forecast?.fc_tmax_c)} °C</small>
+          <small>{en ? 'PSF interpolation · click for details' : 'Interpolasi PSF · klik untuk rincian'}</small>
+        </div>
+      )}
+      {hover && !forecastMode && (
         <div className="hex-tooltip" role="tooltip" style={{ zIndex: 1000 }}>
           <span>{en ? `CELL H3-${resolution} · ${hover.indicators ? 'NASA DATA' : 'SIMULATION DATA'}` : `SEL H3-${resolution} · ${hover.indicators ? 'DATA NASA' : 'DATA SIMULASI'}`}</span>
           <strong>{hover.id}</strong>
@@ -360,8 +432,35 @@ export default function FieldMap({
         </div>
       )}
 
+      {selectedCell && forecastMode && forecast && (
+        <div className="cell-detail" style={{ zIndex: 1000 }}>
+          <div>
+            <span className="micro-label">{en ? 'MODEL PREDICTION' : 'PREDIKSI MODEL'} · {forecast.horizon_code}</span>
+            <button aria-label={en ? 'Close cell details' : 'Tutup rincian sel'} onClick={() => onCell(null)}>
+              <X size={16} />
+            </button>
+          </div>
+          <h3><MapPin size={15} />{selectedCell.id}</h3>
+          <dl>
+            <div><dt>{en ? 'Date (WIB)' : 'Tanggal (WIB)'}</dt><dd>{forecastDate}</dd></div>
+            <div><dt>{en ? 'Daily rainfall' : 'Curah hujan harian'}</dt><dd>{forecastValue(selectedForecast?.fc_precip_total_mm)} mm</dd></div>
+            <div><dt>{en ? 'Peak hourly rain' : 'Puncak hujan per jam'}</dt><dd>{forecastValue(selectedForecast?.fc_precip_max_1h_mm)} {en ? 'mm/h' : 'mm/jam'}</dd></div>
+            <div><dt>{en ? 'Mean temperature' : 'Suhu rata-rata'}</dt><dd>{forecastValue(selectedForecast?.fc_tmean_c)} °C</dd></div>
+            <div><dt>{en ? 'Max. temperature' : 'Suhu maksimum'}</dt><dd>{forecastValue(selectedForecast?.fc_tmax_c)} °C</dd></div>
+            <div><dt>{en ? 'Max. wind speed' : 'Kecepatan angin maks.'}</dt><dd>{forecastValue(selectedForecast?.fc_wind_max_ms)} m/s</dd></div>
+          </dl>
+          <p>
+            {en ? 'Prediction derived from Meteomatics API data via formula (daily aggregation, ETo/SMI). ' : 'Prediksi turunan data API Meteomatics melalui rumus (agregasi harian, ETo/SMI). '}
+            {resolution !== 9 && (en
+              ? `All values are means over ${selectedForecast?.n_children ?? 0} res-9 child cells. `
+              : `Semua nilai merupakan rata-rata ${selectedForecast?.n_children ?? 0} sel anak res-9. `)}
+            {en ? 'PSF interpolation, not per-cell observations.' : 'Interpolasi PSF, bukan observasi per sel.'}
+          </p>
+        </div>
+      )}
+
       {/* Kartu Rincian Sel yang Diklik */}
-      {selectedCell && (
+      {selectedCell && !forecastMode && (
         <div className="cell-detail" style={{ zIndex: 1000 }}>
           <div>
             <span className="micro-label">{en ? `CELL DETAILS · ${selectedCell.indicators ? (cellProvenance === 'NEAREST_NEIGHBOR' ? 'NASA DATA · SPATIAL INTERPOLATION' : 'REAL NASA DATA') : 'SIMULATION DATA'}` : `RINCIAN SEL · ${selectedCell.indicators ? (cellProvenance === 'NEAREST_NEIGHBOR' ? 'DATA NASA · INTERPOLASI SPASIAL' : 'DATA NASA RIIL') : 'DATA SIMULASI'}`}</span>
@@ -528,6 +627,17 @@ export default function FieldMap({
         </div>
       )}
 
+      {data && !error && forecastMode && (
+        forecastError ? (
+          <div className="map-load-status" role="alert" style={{ zIndex: 1000 }}>
+            {en ? 'Prediction unavailable: ' : 'Prediksi tidak tersedia: '}{forecastError}
+          </div>
+        ) : !forecast && (
+          <div className="map-load-status" role="status" style={{ zIndex: 1000 }}>
+            {en ? `Loading prediction for ${forecastDate}…` : `Memuat prediksi ${forecastDate}…`}
+          </div>
+        )
+      )}
       {error && (
         <div className="map-load-status" role="alert" style={{ zIndex: 1000 }}>
           {en ? 'Failed to load geometry. Reload page to try again.' : 'Geometri gagal dimuat. Muat ulang halaman untuk mencoba kembali.'}

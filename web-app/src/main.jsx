@@ -255,6 +255,9 @@ function App() {
 
   const en = lang === 'en';
   const period = formatDailyDate(selectedDate, lang);
+  const forecastDate = selectedDate > today
+    ? [selectedDate.getFullYear(), String(selectedDate.getMonth() + 1).padStart(2, '0'), String(selectedDate.getDate()).padStart(2, '0')].join('-')
+    : null;
   const canGoPrev = selectedDate > MIN_HISTORY_DATE;
   const canGoNext = selectedDate < maxDate;
   const periodOptions = periodOptionsByLang[lang];
@@ -361,6 +364,7 @@ function App() {
   function applyDateChange(nextDate) {
     const cleanDate = startOfDay(nextDate);
     setSelectedDate(cleanDate);
+    setSelectedCell(null);
     setGates(initialGates);
     setSignedBy('');
     setSignature('');
@@ -655,6 +659,7 @@ function App() {
               showGrid={showGrid}
               setShowGrid={setShowGrid}
               onCell={setSelectedCell}
+              forecastDate={forecastDate}
               lang={lang}
             />
           </React.Suspense>
@@ -682,6 +687,7 @@ function App() {
 
                   <span className="period-date-display">
                     {period}
+                    {forecastDate && <small>{en ? 'Prediction' : 'Prediksi'}</small>}
                   </span>
 
                   <button

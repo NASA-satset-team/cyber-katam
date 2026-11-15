@@ -62,9 +62,13 @@ export default defineConfig({
   plugins: [react(), meteomaticsProxy()],
   server: {
     host: '0.0.0.0',
-    // /api/predict diteruskan ke backend FastAPI (uvicorn src.api.predict_server:app --port 8000).
+    // /api/predict & /api/forecast diteruskan ke backend FastAPI (uvicorn src.api.predict_server:app --port 8000).
     proxy: {
       '/api/predict': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/api/forecast': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },

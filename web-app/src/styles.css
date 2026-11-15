@@ -180,6 +180,8 @@ select { cursor: pointer; }
   flex: 1;
 }
 
+.period-date-display small { display: block; font-size: 10px; font-weight: 500; }
+
 /* Historical Calendar Popover (muncul otomatis saat mundur > 5 kali) */
 .history-calendar-popover {
   position: absolute;
@@ -783,6 +785,15 @@ select { cursor: pointer; }
 .native-resolution-note p { font-size: 12px; color: #5b7363; margin: 0; }
 .native-resolution-note strong { color: #2c4a38; font-weight: 600; }
 .native-resolution-note button { margin-left: auto; font-size: 12px; white-space: nowrap; color: #386247; font-weight: 600; }
+.forecast-map-legend { position: absolute; left: 24px; bottom: 38px; z-index: 1000; width: 230px; padding: 12px; background: rgba(255, 255, 255, 0.96); border: 1px solid #d5e0ce; border-radius: 8px; color: #274632; box-shadow: 0 4px 16px #0002; }
+.forecast-map-legend strong { display: block; font-size: 12px; }
+.forecast-rain-scale { display: block; height: 8px; margin: 9px 0 4px; border-radius: 4px; background: linear-gradient(to right, #bae6fd, #075985); }
+.forecast-rain-range { display: flex; justify-content: space-between; font-size: 11px; }
+.forecast-map-legend small { display: block; font-size: 10px; margin-top: 8px; }
+@media (max-width: 600px) {
+  .forecast-map-legend { left: 20px; bottom: 140px; width: 220px; }
+}
+
 .hex-tooltip { position: absolute; z-index: 10; left: 50%; top: 42%; padding: 13px; background: #fffffff7; border: 1px solid #cfe0c7; box-shadow: 0 10px 30px #182c1f24; border-radius: 6px; pointer-events: none; min-width: 220px; }
 .hex-tooltip > span { font-size: 11px; letter-spacing: 0.5px; color: #657e63; font-weight: 500; }
 .hex-tooltip strong { display: block; font: 600 14px 'Poppins', sans-serif; color: #234230; margin-top: 6px; }
@@ -2250,6 +2261,7 @@ body.dark-theme {
 .dark-theme .toast > button {
   color: #d4d4d8;
 }
+.dark-theme .forecast-map-legend,
 .dark-theme .hex-tooltip,
 .dark-theme .cell-detail,
 .dark-theme .map-tools,

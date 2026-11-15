@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CYBER-KATAM Crop Parameter Registry",
+  "description": "Registry of crop parameters with explicit units, provenance, and evidence status. null values are permitted only when status is missing.",
+  "type": "object",
+  "required": ["schema_version", "registry_version", "sources", "units", "crops"],
+  "properties": {
+    "schema_version": {"type": "string", "minLength": 1},
+    "registry_version": {"type": "string", "minLength": 1},
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_id", "type", "citation"],
+        "properties": {
+          "source_id": {"type": "string", "minLength": 1},
+          "type": {"type": "string", "minLength": 1},
+          "citation": {"type": "string", "minLength": 1},
+          "url": {"type": ["string", "null"]},
+          "location": {"type": ["string", "null"]},
+          "scope_note": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["unit_id", "symbol", "dimension", "description"],
+        "properties": {
+          "unit_id": {"type": "string", "minLength": 1},
+          "symbol": {"type": "string", "minLength": 1},
+          "dimension": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "crops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["crop_id", "common_name", "scientific_name", "variety", "record_status", "parameters"],
+        "properties": {
+          "crop_id": {"type": "string", "minLength": 1},
+          "common_name": {"type": "string", "minLength": 1},
+          "scientific_name": {"type": ["string", "null"]},
+          "variety": {"type": ["string", "null"]},
+          "category": {"type": ["string", "null"]},
+          "region": {"type": ["string", "null"]},
+          "record_status": {"type": "string", "minLength": 1},
+          "identity_source_ids": {"type": "array", "items": {"type": "string"}},
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["value", "unit", "status"],
+              "properties": {
+                "value": {},
+                "unit": {"type": "string", "minLength": 1},
+                "status": {"enum": ["observed", "standard", "proxy", "derived", "missing"]},
+                "source_id": {"type": ["string", "null"]},
+                "location": {"type": ["string", "null"]},
+                "product_basis": {"type": ["string", "null"]},
+                "time_origin": {"type": ["string", "null"]},
+                "required_for": {"type": "array", "items": {"type": "string"}},
+                "notes": {"type": "string"}
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

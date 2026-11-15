@@ -1,0 +1,855 @@
+{
+  "schema_version": "1.0.0",
+  "registry_version": "2026-11-15",
+  "sources": [
+    {
+      "source_id": "S01_INPARI32_BABEL",
+      "type": "official_extension_article",
+      "citation": "BRMP Bangka Belitung, Kementerian Pertanian. Pengembangan Varietas Padi di Babel melalui Penerapan SNI 6233-2015: Benih Padi Inbrida. 30 April 2024.",
+      "url": "https://babel.brmp.pertanian.go.id/berita/pengembangan-varietas-padi-di-babel-melalui-penerapan-sni6233-2015-benih-padi-inbrida",
+      "location": "Section 5, Varietas Inpari 32 HDB",
+      "scope_note": "Official national extension description: 120 days, average 6.3 t/ha, WBC reaction. Not a Banyumas trial."
+    },
+    {
+      "source_id": "S02_INPARI32_RIAU",
+      "type": "official_extension_article",
+      "citation": "BRMP Riau, Kementerian Pertanian. Dorong Percepatan Tanam, BRMP Riau Salurkan Benih Padi ke Kabupaten Indragiri Hilir. 21 April 2025.",
+      "url": "https://riau.brmp.pertanian.go.id/berita/dorong-percepatan-tanam-brmp-riau-salurkan-benih-padi-ke-kabupaten-indragiri-hilir",
+      "location": "Article body, paragraph on Inpari 32 HDB",
+      "scope_note": "Official national extension article: potential yield 8.42 t/ha GKG and lowland adaptation. Not a Banyumas trial."
+    },
+    {
+      "source_id": "S03_ANJASMORO_BRMP",
+      "type": "official_variety_description",
+      "citation": "BRMP, Kementerian Pertanian. Varietas Unggul Kedelai 1912-2022. ANJASMORO entry, p. 57.",
+      "url": "https://brmp.pertanian.go.id/informasi-publik/download/varietas/varietas-unggul-kedelai-1912-2022",
+      "location": "ANJASMORO entry, p. 57",
+      "scope_note": "Official variety description: 2.03-2.25 t/ha, 82.5-92.5 days, SK 537/Kpts/TP.240/10/2001."
+    },
+    {
+      "source_id": "S04_VIMA1_REPO",
+      "type": "official_repository_item",
+      "citation": "Kementerian Pertanian. Vima 1, 2 dan 3. Repository item.",
+      "url": "https://repository.pertanian.go.id/items/1756382c-6ec4-4a9b-94a6-a33a48a5e6f6",
+      "location": "VIMA 1 entry",
+      "scope_note": "Official repository description: 57 days, average 1.38 t/ha, potential 1.76 t/ha."
+    },
+    {
+      "source_id": "S05_FAO56_TABLE12",
+      "type": "authoritative_generic_reference",
+      "citation": "FAO Irrigation and Drainage Paper 56, Chapter 6, Table 12: single crop coefficients and crop heights.",
+      "url": "https://www.fao.org/4/x0490e/x0490e0b.htm",
+      "location": "Table 12: Rice; Soybeans; Green Gram and Cowpeas; Sorghum (grain)",
+      "scope_note": "Generic crop coefficients for subhumid reference conditions; not cultivar-specific."
+    },
+    {
+      "source_id": "S06_FAO56_TABLE11",
+      "type": "authoritative_generic_reference",
+      "citation": "FAO Irrigation and Drainage Paper 56, Chapter 6, Table 11: lengths of crop development stages.",
+      "url": "https://www.fao.org/4/x0490e/x0490e0b.htm",
+      "location": "Table 11: Rice; Soybeans (Tropics); Green gram/cowpeas; Sorghum",
+      "scope_note": "Generic stage lengths; not cultivar-specific."
+    },
+    {
+      "source_id": "S07_FAO56_TABLE22",
+      "type": "authoritative_generic_reference",
+      "citation": "FAO Irrigation and Drainage Paper 56, Chapter 8, Table 22: maximum effective rooting depth and depletion fraction.",
+      "url": "https://www.fao.org/4/x0490e/x0490e0e.htm",
+      "location": "Table 22: Rice; Soybeans; Green Gram and Cowpeas; Sorghum (grain)",
+      "scope_note": "Generic ranges; not cultivar/local measurements."
+    },
+    {
+      "source_id": "S08_FAO56_TABLE23",
+      "type": "authoritative_generic_reference",
+      "citation": "FAO Irrigation and Drainage Paper 56, Chapter 8, Table 23: salt tolerance of common agricultural crops.",
+      "url": "https://www.fao.org/4/x0490e/x0490e0e.htm",
+      "location": "Table 23: Rice; Soybeans; Sorghum; Cowpea",
+      "scope_note": "Generic salinity thresholds; Cowpea is not Vima-1."
+    },
+    {
+      "source_id": "S09_TAXONOMY",
+      "type": "taxonomic_reference",
+      "citation": "Standard taxonomic nomenclature; exact POWO/ITIS record to be recorded before production.",
+      "url": "https://powo.science.kew.org/",
+      "location": "Taxonomic query",
+      "scope_note": "Identity only; not an agronomic measurement."
+    },
+    {
+      "source_id": "S10_KATAM",
+      "type": "official_system_description",
+      "citation": "Kementerian Pertanian. KATAM Terpadu-SC system description.",
+      "url": "https://tanamanindustri.brmp.pertanian.go.id/layanan/pengaduan-layanan-elektronik-dan-perpustakaan/katam-terpadu-sc",
+      "location": "KATAM Terpadu-SC description",
+      "scope_note": "Describes planting-time/fertilizer/variety recommendations; no Banyumas-specific export in repository."
+    },
+    {
+      "source_id": "S11_BPS_BANYUMAS",
+      "type": "official_statistics_portal",
+      "citation": "BPS Kabupaten Banyumas. Jumlah Produksi Tanaman Pangan.",
+      "url": "https://banyumaskab.bps.go.id/id/statistics-table/2/NDQjMg==/jumlah-pr",
+      "location": "Statistics table portal",
+      "scope_note": "Aggregate statistics portal; no crop Kc/suitability/N parameter table."
+    }
+  ],
+  "units": [
+    {"unit_id": "day", "symbol": "day", "dimension": "time", "description": "Calendar day or stage duration."},
+    {"unit_id": "fraction", "symbol": "-", "dimension": "dimensionless", "description": "Coefficient or proportion."},
+    {"unit_id": "mm", "symbol": "mm", "dimension": "length", "description": "Water depth."},
+    {"unit_id": "mm_per_season", "symbol": "mm/season", "dimension": "length", "description": "Seasonal water depth."},
+    {"unit_id": "m", "symbol": "m", "dimension": "length", "description": "Rooting depth."},
+    {"unit_id": "t_per_ha", "symbol": "t/ha", "dimension": "mass_area", "description": "Yield per hectare."},
+    {"unit_id": "kg_per_ha", "symbol": "kg/ha", "dimension": "mass_area", "description": "Nitrogen or fertilizer mass per hectare."},
+    {"unit_id": "IDR_per_kg", "symbol": "IDR/kg", "dimension": "currency_mass", "description": "Price per kilogram."},
+    {"unit_id": "IDR_per_ha", "symbol": "IDR/ha", "dimension": "currency_area", "description": "Cost or revenue per hectare."},
+    {"unit_id": "pH", "symbol": "pH", "dimension": "acidity", "description": "Soil pH."},
+    {"unit_id": "degree", "symbol": "deg", "dimension": "angle", "description": "Slope angle."},
+    {"unit_id": "dS_per_m", "symbol": "dS/m", "dimension": "conductivity", "description": "Electrical conductivity of saturation extract."},
+    {"unit_id": "enum", "symbol": "enum", "dimension": "categorical", "description": "Discrete category."}
+  ],
+  "crops": [
+    {
+      "crop_id": "padi_inpari_32_hdb",
+      "common_name": "Padi",
+      "scientific_name": "Oryza sativa L.",
+      "variety": "Inpari 32 HDB",
+      "category": "cereal",
+      "region": "Banyumas",
+      "record_status": "incomplete",
+      "identity_source_ids": ["S09_TAXONOMY", "S01_INPARI32_BABEL"],
+      "parameters": {
+        "growing_duration_days": {
+          "value": 120,
+          "unit": "day",
+          "status": "observed",
+          "source_id": "S01_INPARI32_BABEL",
+          "location": "Section 5, Inpari 32 HDB",
+          "time_origin": "unspecified",
+          "notes": "Official national description reports 120 days; time origin not explicitly stated.",
+          "required_for": ["planting_calendar", "crop_water_requirement"]
+        },
+        "phase_lengths_days": {
+          "value": null,
+          "unit": "day",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No cultivar-specific phase split. FAO generic rice phases total 150 days and are not used as Inpari 32 phases.",
+          "required_for": ["planting_calendar"]
+        },
+        "kc_initial": {
+          "value": 1.05,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Rice",
+          "notes": "FAO-56 generic rice Kc; flooded-system reference, not Inpari 32-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_mid": {
+          "value": 1.20,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Rice",
+          "notes": "FAO-56 generic rice Kc; not Inpari 32-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_end": {
+          "value": [0.60, 0.90],
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Rice",
+          "notes": "Range as printed in FAO-56; not a point Kc and not Inpari 32-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "root_depth_m": {
+          "value": [0.5, 1.0],
+          "unit": "m",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Rice",
+          "notes": "Generic maximum effective root depth range.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "depletion_fraction_p": {
+          "value": 0.20,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Rice",
+          "notes": "Generic depletion fraction for rice paddy.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "water_requirement_mm_season": {
+          "value": null,
+          "unit": "mm_per_season",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No verified Banyumas seasonal irrigation requirement; derive from local ETo/rain/soil, not from seasonal ET.",
+          "required_for": ["crop_water_requirement", "rotation_candidate"]
+        },
+        "n_requirement_kg_ha": {
+          "value": null,
+          "unit": "kg_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No verified crop N recommendation in repository.",
+          "required_for": ["nitrogen_evaluation", "tactical_fertilization"]
+        },
+        "ph_min": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range; FAO/experiment optimum pH is not used as a range.",
+          "required_for": ["suitability"]
+        },
+        "ph_max": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range.",
+          "required_for": ["suitability"]
+        },
+        "slope_max_deg": {
+          "value": null,
+          "unit": "degree",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No crop-specific slope threshold approved.",
+          "required_for": ["suitability"]
+        },
+        "drainage_classes": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved drainage-class rule.",
+          "required_for": ["suitability"]
+        },
+        "salinity_max_ds_m": {
+          "value": 3.0,
+          "unit": "dS_per_m",
+          "status": "standard",
+          "source_id": "S08_FAO56_TABLE23",
+          "location": "Table 23, Rice",
+          "notes": "Generic rice salinity threshold; not Banyumas/cultivar-specific.",
+          "required_for": ["suitability"]
+        },
+        "yield_average_t_ha": {
+          "value": 6.3,
+          "unit": "t_per_ha",
+          "status": "observed",
+          "source_id": "S01_INPARI32_BABEL",
+          "location": "Section 5, Inpari 32 HDB",
+          "product_basis": "GKG",
+          "notes": "Official national average; not Banyumas.",
+          "required_for": ["yield_evaluation"]
+        },
+        "yield_potential_t_ha": {
+          "value": 8.42,
+          "unit": "t_per_ha",
+          "status": "observed",
+          "source_id": "S02_INPARI32_RIAU",
+          "location": "Article body",
+          "product_basis": "GKG",
+          "notes": "Official national potential; not Banyumas.",
+          "required_for": ["yield_evaluation"]
+        },
+        "host_status_wbc": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Official variety source reports WBC susceptibility, but no approved host-status matrix is in repository.",
+          "required_for": ["pest_cycle_evaluation"]
+        },
+        "price_idr_kg": {
+          "value": null,
+          "unit": "IDR_per_kg",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local Banyumas price not available in repository.",
+          "required_for": ["financial_evaluation"]
+        },
+        "production_cost_idr_ha": {
+          "value": null,
+          "unit": "IDR_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local Banyumas production cost not available in repository.",
+          "required_for": ["financial_evaluation"]
+        }
+      }
+    },
+    {
+      "crop_id": "kedelai_anjasmoro",
+      "common_name": "Kedelai",
+      "scientific_name": "Glycine max (L.) Merr.",
+      "variety": "Anjasmoro",
+      "category": "legume",
+      "region": "Banyumas",
+      "record_status": "incomplete",
+      "identity_source_ids": ["S09_TAXONOMY", "S03_ANJASMORO_BRMP"],
+      "parameters": {
+        "growing_duration_days": {
+          "value": [82.5, 92.5],
+          "unit": "day",
+          "status": "observed",
+          "source_id": "S03_ANJASMORO_BRMP",
+          "location": "ANJASMORO entry, p. 57",
+          "time_origin": "DAP",
+          "notes": "Official variety description: umur masak 82.5-92.5 days; DAP context.",
+          "required_for": ["planting_calendar", "crop_water_requirement"]
+        },
+        "phase_lengths_days": {
+          "value": [15, 15, 40, 15],
+          "unit": "day",
+          "status": "proxy",
+          "source_id": "S06_FAO56_TABLE11",
+          "location": "Table 11, Soybeans (Tropics)",
+          "notes": "FAO generic soybean phases (85 days), not an Anjasmoro phase measurement; official duration is 82.5-92.5 days.",
+          "required_for": ["planting_calendar"]
+        },
+        "kc_initial": {
+          "value": 0.40,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Soybeans",
+          "notes": "FAO-56 generic soybean Kc; not Anjasmoro-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_mid": {
+          "value": 1.15,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Soybeans",
+          "notes": "FAO-56 generic soybean Kc; not Anjasmoro-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_end": {
+          "value": 0.50,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Soybeans",
+          "notes": "FAO-56 generic soybean Kc; not Anjasmoro-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "root_depth_m": {
+          "value": [0.6, 1.3],
+          "unit": "m",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Soybeans",
+          "notes": "Generic maximum effective root depth range.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "depletion_fraction_p": {
+          "value": 0.50,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Soybeans",
+          "notes": "Generic depletion fraction.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "water_requirement_mm_season": {
+          "value": null,
+          "unit": "mm_per_season",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No verified Banyumas seasonal requirement.",
+          "required_for": ["crop_water_requirement", "rotation_candidate"]
+        },
+        "n_requirement_kg_ha": {
+          "value": null,
+          "unit": "kg_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No verified N recommendation; N fixation is not a fertilizer requirement.",
+          "required_for": ["nitrogen_evaluation", "tactical_fertilization"]
+        },
+        "ph_min": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range.",
+          "required_for": ["suitability"]
+        },
+        "ph_max": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range.",
+          "required_for": ["suitability"]
+        },
+        "slope_max_deg": {
+          "value": null,
+          "unit": "degree",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No crop-specific slope threshold approved.",
+          "required_for": ["suitability"]
+        },
+        "drainage_classes": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved drainage-class rule.",
+          "required_for": ["suitability"]
+        },
+        "salinity_max_ds_m": {
+          "value": 5.0,
+          "unit": "dS_per_m",
+          "status": "standard",
+          "source_id": "S08_FAO56_TABLE23",
+          "location": "Table 23, Soybeans",
+          "notes": "Generic soybean salinity threshold; not Anjasmoro/Banyumas.",
+          "required_for": ["suitability"]
+        },
+        "yield_average_t_ha": {
+          "value": null,
+          "unit": "t_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "product_basis": "dry_seed",
+          "notes": "Official source gives a yield range, not a Banyumas average.",
+          "required_for": ["yield_evaluation"]
+        },
+        "yield_potential_t_ha": {
+          "value": [2.03, 2.25],
+          "unit": "t_per_ha",
+          "status": "observed",
+          "source_id": "S03_ANJASMORO_BRMP",
+          "location": "ANJASMORO entry, p. 57",
+          "product_basis": "dry_seed",
+          "notes": "Official national yield range; not Banyumas.",
+          "required_for": ["yield_evaluation"]
+        },
+        "host_status_wbc": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved host-status matrix in repository.",
+          "required_for": ["pest_cycle_evaluation"]
+        },
+        "price_idr_kg": {
+          "value": null,
+          "unit": "IDR_per_kg",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local Banyumas price not available.",
+          "required_for": ["financial_evaluation"]
+        },
+        "production_cost_idr_ha": {
+          "value": null,
+          "unit": "IDR_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local Banyumas production cost not available.",
+          "required_for": ["financial_evaluation"]
+        }
+      }
+    },
+    {
+      "crop_id": "kacang_hijau_vima_1",
+      "common_name": "Kacang Hijau",
+      "scientific_name": "Vigna radiata (L.) R. Wilczek",
+      "variety": "Vima-1",
+      "category": "legume",
+      "region": "Banyumas",
+      "record_status": "incomplete",
+      "identity_source_ids": ["S09_TAXONOMY", "S04_VIMA1_REPO"],
+      "parameters": {
+        "growing_duration_days": {
+          "value": 57,
+          "unit": "day",
+          "status": "observed",
+          "source_id": "S04_VIMA1_REPO",
+          "location": "VIMA 1 entry",
+          "time_origin": "DAP",
+          "notes": "Official repository description: 57 days.",
+          "required_for": ["planting_calendar", "crop_water_requirement"]
+        },
+        "phase_lengths_days": {
+          "value": null,
+          "unit": "day",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No Vima-1 phase split. FAO green gram phases total 110 days and are not used.",
+          "required_for": ["planting_calendar"]
+        },
+        "kc_initial": {
+          "value": 0.40,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Green Gram and Cowpeas",
+          "notes": "FAO generic green gram/cowpea Kc; not Vima-1-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_mid": {
+          "value": 1.05,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Green Gram and Cowpeas",
+          "notes": "FAO generic green gram/cowpea Kc; not Vima-1-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_end": {
+          "value": [0.35, 0.60],
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Green Gram and Cowpeas",
+          "notes": "FAO range; not a point Kc and not Vima-1-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "root_depth_m": {
+          "value": [0.6, 1.0],
+          "unit": "m",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Green Gram and Cowpeas",
+          "notes": "Generic maximum effective root depth range.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "depletion_fraction_p": {
+          "value": 0.45,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Green Gram and Cowpeas",
+          "notes": "Generic depletion fraction.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "water_requirement_mm_season": {
+          "value": null,
+          "unit": "mm_per_season",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No verified Banyumas seasonal requirement.",
+          "required_for": ["crop_water_requirement", "rotation_candidate"]
+        },
+        "n_requirement_kg_ha": {
+          "value": null,
+          "unit": "kg_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No verified N recommendation; legume fixation is not a fertilizer requirement.",
+          "required_for": ["nitrogen_evaluation", "tactical_fertilization"]
+        },
+        "ph_min": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range.",
+          "required_for": ["suitability"]
+        },
+        "ph_max": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range.",
+          "required_for": ["suitability"]
+        },
+        "slope_max_deg": {
+          "value": null,
+          "unit": "degree",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No crop-specific slope threshold approved.",
+          "required_for": ["suitability"]
+        },
+        "drainage_classes": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved drainage-class rule.",
+          "required_for": ["suitability"]
+        },
+        "salinity_max_ds_m": {
+          "value": null,
+          "unit": "dS_per_m",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "FAO Table 23 has Cowpea, not Vima-1; not used as a Vima-1 threshold.",
+          "required_for": ["suitability"]
+        },
+        "yield_average_t_ha": {
+          "value": 1.38,
+          "unit": "t_per_ha",
+          "status": "observed",
+          "source_id": "S04_VIMA1_REPO",
+          "location": "VIMA 1 entry",
+          "product_basis": "dry_seed",
+          "notes": "Official average; not Banyumas.",
+          "required_for": ["yield_evaluation"]
+        },
+        "yield_potential_t_ha": {
+          "value": 1.76,
+          "unit": "t_per_ha",
+          "status": "observed",
+          "source_id": "S04_VIMA1_REPO",
+          "location": "VIMA 1 entry",
+          "product_basis": "dry_seed",
+          "notes": "Official potential; not Banyumas.",
+          "required_for": ["yield_evaluation"]
+        },
+        "host_status_wbc": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved host-status matrix.",
+          "required_for": ["pest_cycle_evaluation"]
+        },
+        "price_idr_kg": {
+          "value": null,
+          "unit": "IDR_per_kg",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local Banyumas price not available.",
+          "required_for": ["financial_evaluation"]
+        },
+        "production_cost_idr_ha": {
+          "value": null,
+          "unit": "IDR_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local Banyumas production cost not available.",
+          "required_for": ["financial_evaluation"]
+        }
+      }
+    },
+    {
+      "crop_id": "sorgum",
+      "common_name": "Sorgum",
+      "scientific_name": "Sorghum bicolor (L.) Moench",
+      "variety": null,
+      "category": "cereal",
+      "region": "Banyumas",
+      "record_status": "incomplete",
+      "identity_source_ids": ["S09_TAXONOMY"],
+      "parameters": {
+        "growing_duration_days": {
+          "value": null,
+          "unit": "day",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "time_origin": "unspecified",
+          "notes": "No sorghum variety specified and no variety-specific duration.",
+          "required_for": ["planting_calendar", "crop_water_requirement"]
+        },
+        "phase_lengths_days": {
+          "value": null,
+          "unit": "day",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No variety-specific phase split.",
+          "required_for": ["planting_calendar"]
+        },
+        "kc_initial": {
+          "value": 0.30,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Sorghum - grain",
+          "notes": "FAO generic sorghum Kc; not variety-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_mid": {
+          "value": [1.00, 1.10],
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Sorghum - grain",
+          "notes": "FAO range; not a point Kc and not variety-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "kc_end": {
+          "value": 0.55,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S05_FAO56_TABLE12",
+          "location": "Table 12, Sorghum - grain",
+          "notes": "FAO generic sorghum Kc; not variety-specific.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "root_depth_m": {
+          "value": [1.0, 2.0],
+          "unit": "m",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Sorghum - grain",
+          "notes": "Generic maximum effective root depth range.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "depletion_fraction_p": {
+          "value": 0.55,
+          "unit": "fraction",
+          "status": "standard",
+          "source_id": "S07_FAO56_TABLE22",
+          "location": "Table 22, Sorghum - grain",
+          "notes": "Generic depletion fraction.",
+          "required_for": ["crop_water_requirement"]
+        },
+        "water_requirement_mm_season": {
+          "value": null,
+          "unit": "mm_per_season",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No variety/local seasonal requirement.",
+          "required_for": ["crop_water_requirement", "rotation_candidate"]
+        },
+        "n_requirement_kg_ha": {
+          "value": null,
+          "unit": "kg_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No verified N recommendation.",
+          "required_for": ["nitrogen_evaluation", "tactical_fertilization"]
+        },
+        "ph_min": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range.",
+          "required_for": ["suitability"]
+        },
+        "ph_max": {
+          "value": null,
+          "unit": "pH",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved pH range.",
+          "required_for": ["suitability"]
+        },
+        "slope_max_deg": {
+          "value": null,
+          "unit": "degree",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No crop-specific slope threshold.",
+          "required_for": ["suitability"]
+        },
+        "drainage_classes": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved drainage-class rule.",
+          "required_for": ["suitability"]
+        },
+        "salinity_max_ds_m": {
+          "value": 6.8,
+          "unit": "dS_per_m",
+          "status": "standard",
+          "source_id": "S08_FAO56_TABLE23",
+          "location": "Table 23, Sorghum",
+          "notes": "Generic sorghum salinity threshold; not variety/local.",
+          "required_for": ["suitability"]
+        },
+        "yield_average_t_ha": {
+          "value": null,
+          "unit": "t_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "product_basis": "grain_unspecified",
+          "notes": "No variety or local yield.",
+          "required_for": ["yield_evaluation"]
+        },
+        "yield_potential_t_ha": {
+          "value": null,
+          "unit": "t_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "product_basis": "grain_unspecified",
+          "notes": "No variety or local yield.",
+          "required_for": ["yield_evaluation"]
+        },
+        "host_status_wbc": {
+          "value": null,
+          "unit": "enum",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "No approved host-status matrix.",
+          "required_for": ["pest_cycle_evaluation"]
+        },
+        "price_idr_kg": {
+          "value": null,
+          "unit": "IDR_per_kg",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local price not available.",
+          "required_for": ["financial_evaluation"]
+        },
+        "production_cost_idr_ha": {
+          "value": null,
+          "unit": "IDR_per_ha",
+          "status": "missing",
+          "source_id": null,
+          "location": null,
+          "notes": "Local cost not available.",
+          "required_for": ["financial_evaluation"]
+        }
+      }
+    }
+  ]
+}
